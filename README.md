@@ -1,37 +1,37 @@
-# 📱 Gestor de Gastos - Aplicación Flutter
+# Gestor de Gastos - Aplicación Flutter
 
 Una aplicación móvil completa para la gestión personal de gastos e ingresos, desarrollada con Flutter y Dart.
 
-## 🚀 Características Principales
+## Características Principales
 
-### 💰 Gestión Financiera
+### Gestión Financiera
 
 - **Gastos e Ingresos**: Registro completo con categorías personalizables
 - **Balance en Tiempo Real**: Visualización de ingresos, gastos y balance mensual
 - **Presupuesto Mensual**: Configuración y seguimiento de presupuestos
 - **Múltiples Monedas**: Soporte para DOP, MXN, USD, EUR, COP, ARS
 
-### 📊 Análisis y Estadísticas
+### Análisis y Estadísticas
 
 - **Gráficos Interactivos**: Gráficos de pastel y barras para visualizar gastos
 - **Estadísticas Detalladas**: Análisis por categoría, período y tipo
 - **Reportes Mensuales**: Resúmenes completos de actividad financiera
 
-### 🔄 Funcionalidades Avanzadas
+### Funcionalidades Avanzadas
 
 - **Gastos Recurrentes**: Configuración de gastos semanales, quincenales, mensuales y anuales
 - **Plantillas de Gastos**: Creación y uso de plantillas favoritas
 - **Importación/Exportación CSV**: Backup y restauración de datos
 - **Búsqueda y Filtros**: Búsqueda avanzada por texto, categoría, fecha y monto
 
-### 🎨 Interfaz de Usuario
+### Interfaz de Usuario
 
 - **Diseño Moderno**: UI/UX intuitiva y atractiva
 - **Modo Oscuro/Claro**: Soporte completo para ambos temas
 - **Responsive**: Optimizada para móviles y tablets
 - **Accesibilidad**: Diseño inclusivo y fácil de usar
 
-## 🛠️ Tecnologías Utilizadas
+## Tecnologías Utilizadas
 
 - **Flutter 3.32.5**: Framework de desarrollo multiplataforma
 - **Dart**: Lenguaje de programación
@@ -40,16 +40,15 @@ Una aplicación móvil completa para la gestión personal de gastos e ingresos, 
 - **Charts**: Visualización de datos con fl_chart
 - **CSV**: Importación/exportación de datos
 
-## 📱 Plataformas Soportadas
+## Plataformas Soportadas
 
 - ✅ Android
 - ✅ iOS
-- ✅ Web
 - ✅ Windows
 - ✅ macOS
 - ✅ Linux
 
-## 🚀 Instalación y Configuración
+## Instalación y Configuración
 
 ### Prerrequisitos
 
@@ -97,7 +96,7 @@ Una aplicación móvil completa para la gestión personal de gastos e ingresos, 
    flutter test
    ```
 
-## 📁 Estructura del Proyecto
+## Estructura del Proyecto
 
 ```
 lib/
@@ -120,37 +119,7 @@ lib/
     └── web_csv_download.dart # Funcionalidades web
 ```
 
-## 🎯 Funcionalidades Detalladas
-
-### Gestión de Gastos
-
-- ✅ Agregar, editar y eliminar gastos
-- ✅ Categorización automática
-- ✅ Notas y descripciones
-- ✅ Fechas personalizables
-- ✅ Gastos recurrentes
-
-### Gestión de Ingresos
-
-- ✅ Registro de ingresos
-- ✅ Categorización
-- ✅ Seguimiento de balance
-
-### Análisis Financiero
-
-- ✅ Gráficos de gastos por categoría
-- ✅ Estadísticas mensuales
-- ✅ Comparativas de períodos
-- ✅ Alertas de presupuesto
-
-### Personalización
-
-- ✅ Temas claro/oscuro
-- ✅ Categorías personalizables
-- ✅ Monedas múltiples
-- ✅ Nombre de usuario
-
-## 📊 Capturas de Pantalla
+## Capturas de Pantalla
 
 ![Captura de pantalla principal](assets/screenshots/main_screen.png)
 _Pantalla principal con balance y estadísticas_
@@ -167,7 +136,7 @@ _Gestión de plantillas de gastos_
 ![Configuración](assets/screenshots/settings_screen.png)
 _Configuración de temas y preferencias_
 
-## 🤝 Contribución
+## Contribución
 
 1. Fork el proyecto
 2. Crea una rama para tu feature (`git checkout -b feature/AmazingFeature`)

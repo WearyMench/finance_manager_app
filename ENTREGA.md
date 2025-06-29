@@ -29,14 +29,6 @@ Gestor de Gastos es una aplicación móvil completa desarrollada en Flutter para
 - [x] **Múltiples Monedas**: Soporte para DOP, MXN, USD, EUR, COP, ARS
 - [x] **Presupuesto Mensual**: Configuración y seguimiento de presupuestos
 
-### ✅ Características Técnicas
-
-- [x] **Arquitectura Limpia**: Separación de modelos, vistas y lógica de negocio
-- [x] **Gestión de Estado**: Provider para manejo de temas
-- [x] **Persistencia**: SharedPreferences para configuraciones
-- [x] **Responsive Design**: Optimizada para móviles y tablets
-- [x] **Accesibilidad**: Diseño inclusivo y fácil de usar
-
 ## 🛠️ Tecnologías Utilizadas
 
 | Tecnología        | Versión | Propósito                |
@@ -87,7 +79,6 @@ gestor_gastos/
 ├── test/                        # Tests
 ├── pubspec.yaml                 # Dependencias
 ├── README.md                    # Documentación principal
-├── LICENSE                      # Licencia MIT
 └── ENTREGA.md                   # Este archivo
 ```
 
@@ -164,7 +155,6 @@ flutter build web      # Build para web
 
 - ✅ **Android**: APK nativo
 - ✅ **iOS**: App Store ready
-- ✅ **Web**: PWA compatible
 - ✅ **Windows**: Desktop app
 - ✅ **macOS**: Desktop app
 - ✅ **Linux**: Desktop app
@@ -174,7 +164,6 @@ flutter build web      # Build para web
 La aplicación ha sido probada en:
 
 - [x] Android (Emulador y dispositivo físico)
-- [x] Web (Chrome, Firefox, Safari)
 - [x] Windows (Desktop)
 - [x] Funcionalidades principales
 - [x] Modo oscuro/claro
@@ -197,33 +186,11 @@ La aplicación ha sido probada en:
 - [x] Interfaz de usuario intuitiva
 - [x] Funcionalidades avanzadas implementadas
 
-### ✅ Calidad de Código
-
-- [x] Arquitectura limpia y organizada
-- [x] Separación de responsabilidades
-- [x] Manejo de errores
-- [x] Documentación de código
-
-### ✅ Experiencia de Usuario
-
-- [x] Diseño moderno y atractivo
-- [x] Navegación intuitiva
-- [x] Responsive design
-- [x] Accesibilidad
-
-### ✅ Características Técnicas
-
-- [x] Persistencia de datos
-- [x] Gestión de estado
-- [x] Temas dinámicos
-- [x] Multiplataforma
-
 ## 🔮 Posibles Mejoras Futuras
 
 - [ ] Notificaciones push
 - [ ] Sincronización en la nube
 - [ ] Reconocimiento de facturas
-- [ ] Integración con bancos
 - [ ] Reportes PDF
 - [ ] Widgets de escritorio
 - [ ] Backup automático
