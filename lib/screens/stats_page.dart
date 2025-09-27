@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
-import '../db/database_helper.dart';
-import 'package:fl_chart/fl_chart.dart';
-import '../utils/app_colors.dart';
+import '../providers/transaction_provider.dart';
+import '../models/api_models.dart' as api_models;
+import '../theme/app_theme.dart';
+import '../widgets/error_message.dart';
+import '../widgets/stats_card.dart';
+import '../widgets/category_chart.dart';
 
 class StatsPage extends StatefulWidget {
   const StatsPage({super.key});
@@ -13,26 +17,33 @@ class StatsPage extends StatefulWidget {
 
 class _StatsPageState extends State<StatsPage>
     with SingleTickerProviderStateMixin {
-  final DatabaseHelper _dbHelper = DatabaseHelper();
   late TabController _tabController;
+  String _selectedPeriod = 'month';
+  DateTime _selectedDate = DateTime.now();
 
-  // Gastos
-  double _totalExpenses = 0.0;
-  Map<String, double> _expensesByCategory = {};
-  Map<String, double> _expensesByMonth = {};
-
-  // Ingresos
-  double _totalIncomes = 0.0;
-  Map<String, double> _incomesByCategory = {};
-  Map<String, double> _incomesByMonth = {};
-
-  bool _isLoading = true;
+  final List<String> _periods = ['week', 'month', 'year'];
+  final Map<String, String> _periodLabels = {
+    'week': 'Semana',
+    'month': 'Mes',
+    'year': 'Año',
+  };
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
-    _loadStats();
+    // Load data when the page is initialized
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadData();
+    });
+  }
+
+  Future<void> _loadData() async {
+    final transactionProvider = Provider.of<TransactionProvider>(
+      context,
+      listen: false,
+    );
+    await transactionProvider.loadData();
   }
 
   @override
@@ -41,41 +52,53 @@ class _StatsPageState extends State<StatsPage>
     super.dispose();
   }
 
-  Future<void> _loadStats() async {
-    setState(() {
-      _isLoading = true;
-    });
+  Map<String, double> _getTransactionsByCategory(
+    List<api_models.Transaction> transactions,
+  ) {
+    final Map<String, double> categoryTotals = {};
 
-    try {
-      // Cargar datos de gastos
-      final totalExpenses = await _dbHelper.getTotalExpenses();
-      final expensesByCategory = await _dbHelper.getExpensesByCategory();
-      final expensesByMonth = await _dbHelper.getExpensesByMonth();
-
-      // Cargar datos de ingresos
-      final totalIncomes = await _dbHelper.getTotalIncomes();
-      final incomesByCategory = await _dbHelper.getIncomesByCategory();
-      final incomesByMonth = await _dbHelper.getIncomesByMonth();
-
-      setState(() {
-        _totalExpenses = totalExpenses;
-        _expensesByCategory = expensesByCategory;
-        _expensesByMonth = expensesByMonth;
-        _totalIncomes = totalIncomes;
-        _incomesByCategory = incomesByCategory;
-        _incomesByMonth = incomesByMonth;
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al cargar estadísticas: $e')),
-        );
-      }
+    for (final transaction in transactions) {
+      final category = transaction.category.name;
+      categoryTotals[category] =
+          (categoryTotals[category] ?? 0) + transaction.amount;
     }
+
+    return categoryTotals;
+  }
+
+  List<api_models.Transaction> _filterTransactionsByPeriod(
+    List<api_models.Transaction> transactions,
+    String period,
+    DateTime date,
+  ) {
+    final now = DateTime.now();
+    DateTime startDate;
+    DateTime endDate = now;
+
+    switch (period) {
+      case 'week':
+        startDate = date.subtract(Duration(days: date.weekday - 1));
+        endDate = startDate.add(const Duration(days: 6));
+        break;
+      case 'month':
+        startDate = DateTime(date.year, date.month, 1);
+        endDate = DateTime(date.year, date.month + 1, 0);
+        break;
+      case 'year':
+        startDate = DateTime(date.year, 1, 1);
+        endDate = DateTime(date.year, 12, 31);
+        break;
+      default:
+        startDate = DateTime(date.year, date.month, 1);
+        endDate = DateTime(date.year, date.month + 1, 0);
+    }
+
+    return transactions.where((transaction) {
+      return transaction.date.isAfter(
+            startDate.subtract(const Duration(days: 1)),
+          ) &&
+          transaction.date.isBefore(endDate.add(const Duration(days: 1)));
+    }).toList();
   }
 
   @override
@@ -83,19 +106,96 @@ class _StatsPageState extends State<StatsPage>
     return DefaultTabController(
       length: 3,
       child: Scaffold(
+        backgroundColor: AppTheme.getBackgroundColor(context),
         appBar: AppBar(
-          title: const Text('Estadísticas'),
-          elevation: 0,
-          backgroundColor: AppColors.getPrimaryColor(context),
+          title: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Estadísticas',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+              ),
+              Text(
+                'Análisis de tus finanzas',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.white.withOpacity(0.8),
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: AppTheme.getPrimaryColor(context),
           foregroundColor: Colors.white,
-          bottom: const TabBar(
+          elevation: 0,
+          actions: [
+            Container(
+              margin: const EdgeInsets.only(right: 16),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: PopupMenuButton<String>(
+                icon: const Icon(Icons.calendar_today, size: 20),
+                onSelected: (value) {
+                  setState(() {
+                    _selectedPeriod = value;
+                  });
+                },
+                itemBuilder: (context) => _periods.map((period) {
+                  return PopupMenuItem(
+                    value: period,
+                    child: Row(
+                      children: [
+                        Icon(
+                          period == 'week'
+                              ? Icons.view_week
+                              : period == 'month'
+                              ? Icons.calendar_month
+                              : Icons.calendar_today,
+                          size: 16,
+                          color: AppTheme.getPrimaryColor(context),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          _periodLabels[period]!,
+                          style: TextStyle(
+                            color: AppTheme.getTextPrimaryColor(context),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+          ],
+          bottom: TabBar(
             labelColor: Colors.white,
-            unselectedLabelColor: Colors.white70,
+            unselectedLabelColor: Colors.white.withOpacity(0.7),
             indicatorColor: Colors.white,
-            tabs: [
-              Tab(text: 'Resumen'),
-              Tab(text: 'Gastos'),
-              Tab(text: 'Ingresos'),
+            indicatorWeight: 3,
+            labelStyle: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
+            unselectedLabelStyle: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w400,
+            ),
+            tabs: const [
+              Tab(
+                icon: Icon(Icons.dashboard_rounded, size: 20),
+                text: 'Resumen',
+              ),
+              Tab(
+                icon: Icon(Icons.trending_down_rounded, size: 20),
+                text: 'Gastos',
+              ),
+              Tab(
+                icon: Icon(Icons.trending_up_rounded, size: 20),
+                text: 'Ingresos',
+              ),
             ],
           ),
         ),
@@ -105,7 +205,7 @@ class _StatsPageState extends State<StatsPage>
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
               colors: [
-                AppColors.getPrimaryColor(context).withOpacity(0.1),
+                AppTheme.getPrimaryColor(context).withOpacity(0.05),
                 Colors.transparent,
               ],
             ),
@@ -123,590 +223,273 @@ class _StatsPageState extends State<StatsPage>
   }
 
   Widget _buildSummaryTab() {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        // Tarjeta de resumen general
-        Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: AppColors.getPrimaryGradient(context),
-            ),
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.getPrimaryColor(context).withOpacity(0.3),
-                blurRadius: 20,
-                offset: const Offset(0, 10),
-              ),
-            ],
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(24),
+    return Consumer<TransactionProvider>(
+      builder: (context, transactionProvider, child) {
+        if (transactionProvider.isLoading) {
+          return Center(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: AppColors.getWhiteWithOpacity(0.2),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(
-                        Icons.analytics,
-                        color: Colors.white,
-                        size: 24,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    const Text(
-                      'Resumen del Mes',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 24),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildSummaryCard(
-                        'Ingresos',
-                        _totalIncomes,
-                        AppColors.getSuccessColor(context),
-                        Icons.trending_up,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: _buildSummaryCard(
-                        'Gastos',
-                        _totalExpenses,
-                        AppColors.getDangerColor(context),
-                        Icons.trending_down,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: AppColors.getWhiteWithOpacity(0.15),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: AppColors.getWhiteWithOpacity(0.2),
-                    ),
+                CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    AppTheme.getPrimaryColor(context),
                   ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Balance Neto',
-                        style: TextStyle(
-                          color: AppColors.getWhiteWithOpacity(0.9),
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      Text(
-                        NumberFormat.currency(
-                          locale: 'es_MX',
-                          symbol: 'RD\$',
-                        ).format(_totalIncomes - _totalExpenses),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Cargando estadísticas...',
+                  style: TextStyle(
+                    color: AppTheme.getTextSecondaryColor(context),
+                    fontSize: 16,
                   ),
                 ),
               ],
             ),
-          ),
-        ),
-        const SizedBox(height: 24),
+          );
+        }
 
-        // Gráfico de gastos por categoría
-        if (_expensesByCategory.isNotEmpty) ...[
-          Container(
-            decoration: BoxDecoration(
-              color: AppColors.getCardColor(context),
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.getBlackWithOpacity(0.05),
-                  blurRadius: 20,
-                  offset: const Offset(0, 10),
-                ),
-              ],
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: AppColors.getDangerColor(
-                            context,
-                          ).withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Icon(
-                          Icons.pie_chart,
-                          color: AppColors.getDangerColor(context),
-                          size: 20,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Text(
-                        'Gastos por Categoría',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.getTextPrimaryColor(context),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  SizedBox(
-                    height: 200,
-                    child: PieChart(
-                      PieChartData(
-                        sections: _expensesByCategory.entries.map((entry) {
-                          return PieChartSectionData(
-                            value: entry.value,
-                            title:
-                                '${entry.key}\n${NumberFormat.currency(locale: 'es_MX', symbol: 'RD\$').format(entry.value)}',
-                            color: AppColors.getCategoryColor(entry.key),
-                            radius: 60,
-                            titleStyle: const TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          );
-                        }).toList(),
-                        centerSpaceRadius: 40,
-                        sectionsSpace: 2,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 24),
-        ],
+        if (transactionProvider.error != null) {
+          return ErrorMessage(
+            message: transactionProvider.getErrorMessage(),
+            onRetry: () => transactionProvider.loadData(),
+          );
+        }
 
-        // Gráfico de ingresos por categoría
-        if (_incomesByCategory.isNotEmpty) ...[
-          Container(
-            decoration: BoxDecoration(
-              color: AppColors.getCardColor(context),
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.getBlackWithOpacity(0.05),
-                  blurRadius: 20,
-                  offset: const Offset(0, 10),
-                ),
-              ],
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: AppColors.getSuccessColor(
-                            context,
-                          ).withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Icon(
-                          Icons.pie_chart,
-                          color: AppColors.getSuccessColor(context),
-                          size: 20,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Text(
-                        'Ingresos por Categoría',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.getTextPrimaryColor(context),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  SizedBox(
-                    height: 200,
-                    child: PieChart(
-                      PieChartData(
-                        sections: _incomesByCategory.entries.map((entry) {
-                          return PieChartSectionData(
-                            value: entry.value,
-                            title:
-                                '${entry.key}\n${NumberFormat.currency(locale: 'es_MX', symbol: 'RD\$').format(entry.value)}',
-                            color: AppColors.getCategoryColor(entry.key),
-                            radius: 60,
-                            titleStyle: const TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          );
-                        }).toList(),
-                        centerSpaceRadius: 40,
-                        sectionsSpace: 2,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ],
-    );
-  }
+        final allTransactions = transactionProvider.transactions;
+        final filteredTransactions = _filterTransactionsByPeriod(
+          allTransactions,
+          _selectedPeriod,
+          _selectedDate,
+        );
 
-  Widget _buildSummaryCard(
-    String title,
-    double amount,
-    Color color,
-    IconData icon,
-  ) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.15),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withOpacity(0.2)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+        final expenses = filteredTransactions
+            .where((t) => t.type == 'expense')
+            .toList();
+        final incomes = filteredTransactions
+            .where((t) => t.type == 'income')
+            .toList();
+
+        final totalExpenses = expenses.fold(0.0, (sum, t) => sum + t.amount);
+        final totalIncomes = incomes.fold(0.0, (sum, t) => sum + t.amount);
+        final balance = totalIncomes - totalExpenses;
+
+        final expensesByCategory = _getTransactionsByCategory(expenses);
+        final incomesByCategory = _getTransactionsByCategory(incomes);
+
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
             children: [
-              Icon(icon, color: Colors.white, size: 20),
-              const SizedBox(width: 8),
-              Text(
-                title,
-                style: TextStyle(
-                  color: Colors.white.withOpacity(0.9),
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
+              // Tarjeta de resumen general
+              StatsOverviewCard(
+                title: 'Resumen ${_periodLabels[_selectedPeriod]}',
+                totalIncome: totalIncomes,
+                totalExpenses: totalExpenses,
+                balance: balance,
+                currencySymbol: 'RD\$',
+                currencyCode: 'DOP',
+                period: DateFormat('MMMM yyyy').format(_selectedDate),
               ),
+              const SizedBox(height: 24),
+
+              // Tarjetas de estadísticas individuales
+              Row(
+                children: [
+                  Expanded(
+                    child: StatsCard(
+                      title: 'Ingresos',
+                      amount: totalIncomes,
+                      currencySymbol: 'RD\$',
+                      currencyCode: 'DOP',
+                      icon: Icons.trending_up_rounded,
+                      iconColor: AppTheme.getSuccessColor(context),
+                      backgroundColor: AppTheme.getSuccessColor(
+                        context,
+                      ).withOpacity(0.1),
+                      isPositive: true,
+                      subtitle: '${incomes.length} transacciones',
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: StatsCard(
+                      title: 'Gastos',
+                      amount: totalExpenses,
+                      currencySymbol: 'RD\$',
+                      currencyCode: 'DOP',
+                      icon: Icons.trending_down_rounded,
+                      iconColor: AppTheme.getErrorColor(context),
+                      backgroundColor: AppTheme.getErrorColor(
+                        context,
+                      ).withOpacity(0.1),
+                      isPositive: false,
+                      subtitle: '${expenses.length} transacciones',
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+
+              // Gráfico de gastos por categoría
+              if (expensesByCategory.isNotEmpty)
+                CategoryChart(
+                  categoryData: expensesByCategory,
+                  title: 'Gastos por Categoría',
+                  currencySymbol: 'RD\$',
+                  currencyCode: 'DOP',
+                  primaryColor: AppTheme.getErrorColor(context),
+                ),
+              const SizedBox(height: 24),
+
+              // Gráfico de ingresos por categoría
+              if (incomesByCategory.isNotEmpty)
+                CategoryChart(
+                  categoryData: incomesByCategory,
+                  title: 'Ingresos por Categoría',
+                  currencySymbol: 'RD\$',
+                  currencyCode: 'DOP',
+                  primaryColor: AppTheme.getSuccessColor(context),
+                ),
             ],
           ),
-          const SizedBox(height: 8),
-          Text(
-            NumberFormat.currency(locale: 'es_MX', symbol: '\$').format(amount),
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
   Widget _buildExpensesTab() {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        _buildTotalCard(
-          _totalExpenses,
-          'Total Gastado',
-          Colors.red,
-          Icons.money_off,
-        ),
-        const SizedBox(height: 24),
-        _buildCategoryStats(
-          _expensesByCategory,
-          _totalExpenses,
-          'Gastos por Categoría',
-          Colors.red,
-        ),
-      ],
+    return Consumer<TransactionProvider>(
+      builder: (context, transactionProvider, child) {
+        if (transactionProvider.isLoading) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    AppTheme.getPrimaryColor(context),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Cargando gastos...',
+                  style: TextStyle(
+                    color: AppTheme.getTextSecondaryColor(context),
+                    fontSize: 16,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        final allTransactions = transactionProvider.transactions;
+        final expenses = _filterTransactionsByPeriod(
+          allTransactions.where((t) => t.type == 'expense').toList(),
+          _selectedPeriod,
+          _selectedDate,
+        );
+
+        final totalExpenses = expenses.fold(0.0, (sum, t) => sum + t.amount);
+        final expensesByCategory = _getTransactionsByCategory(expenses);
+
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              StatsCard(
+                title: 'Total Gastado',
+                amount: totalExpenses,
+                currencySymbol: 'RD\$',
+                currencyCode: 'DOP',
+                icon: Icons.trending_down_rounded,
+                iconColor: AppTheme.getErrorColor(context),
+                backgroundColor: AppTheme.getErrorColor(
+                  context,
+                ).withOpacity(0.1),
+                isPositive: false,
+                subtitle: '${expenses.length} transacciones',
+              ),
+              const SizedBox(height: 24),
+              CategoryList(
+                categoryData: expensesByCategory,
+                title: 'Gastos por Categoría',
+                currencySymbol: 'RD\$',
+                currencyCode: 'DOP',
+                primaryColor: AppTheme.getErrorColor(context),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
   Widget _buildIncomesTab() {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        _buildTotalCard(
-          _totalIncomes,
-          'Total Ingresado',
-          Colors.green,
-          Icons.attach_money,
-        ),
-        const SizedBox(height: 24),
-        _buildCategoryStats(
-          _incomesByCategory,
-          _totalIncomes,
-          'Ingresos por Categoría',
-          Colors.green,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTotalCard(
-    double total,
-    String title,
-    MaterialColor color,
-    IconData icon,
-  ) {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Container(
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          gradient: LinearGradient(
-            colors: [color[600]!, color[800]!],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
-        child: Column(
-          children: [
-            Icon(icon, color: Colors.white, size: 48),
-            const SizedBox(height: 16),
-            Text(
-              title,
-              style: const TextStyle(
-                color: Colors.white70,
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-              ),
+    return Consumer<TransactionProvider>(
+      builder: (context, transactionProvider, child) {
+        if (transactionProvider.isLoading) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    AppTheme.getPrimaryColor(context),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Cargando ingresos...',
+                  style: TextStyle(
+                    color: AppTheme.getTextSecondaryColor(context),
+                    fontSize: 16,
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 8),
-            Text(
-              NumberFormat.currency(
-                locale: 'es_MX',
-                symbol: '\$',
-              ).format(total),
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 32,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+          );
+        }
 
-  Widget _buildCategoryStats(
-    Map<String, double> categoryData,
-    double total,
-    String title,
-    Color color,
-  ) {
-    if (categoryData.isEmpty) {
-      return Card(
-        elevation: 2,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
+        final allTransactions = transactionProvider.transactions;
+        final incomes = _filterTransactionsByPeriod(
+          allTransactions.where((t) => t.type == 'income').toList(),
+          _selectedPeriod,
+          _selectedDate,
+        );
+
+        final totalIncomes = incomes.fold(0.0, (sum, t) => sum + t.amount);
+        final incomesByCategory = _getTransactionsByCategory(incomes);
+
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
           child: Column(
             children: [
-              Icon(
-                Icons.pie_chart,
-                size: 48,
-                color: AppColors.getTextSecondaryColor(context),
+              StatsCard(
+                title: 'Total Ingresado',
+                amount: totalIncomes,
+                currencySymbol: 'RD\$',
+                currencyCode: 'DOP',
+                icon: Icons.trending_up_rounded,
+                iconColor: AppTheme.getSuccessColor(context),
+                backgroundColor: AppTheme.getSuccessColor(
+                  context,
+                ).withOpacity(0.1),
+                isPositive: true,
+                subtitle: '${incomes.length} transacciones',
               ),
-              const SizedBox(height: 16),
-              Text(
-                'No hay datos para mostrar',
-                style: TextStyle(
-                  color: AppColors.getTextSecondaryColor(context),
-                  fontSize: 16,
-                ),
+              const SizedBox(height: 24),
+              CategoryList(
+                categoryData: incomesByCategory,
+                title: 'Ingresos por Categoría',
+                currencySymbol: 'RD\$',
+                currencyCode: 'DOP',
+                primaryColor: AppTheme.getSuccessColor(context),
               ),
             ],
           ),
-        ),
-      );
-    }
-
-    // Pie chart
-    final List<PieChartSectionData> sections = [];
-    final totalValue = total > 0 ? total : 1.0;
-    int colorIndex = 0;
-    final List<Color> pieColors = AppColors.getChartColors();
-
-    categoryData.forEach((category, amount) {
-      final percent = amount / totalValue * 100;
-      sections.add(
-        PieChartSectionData(
-          color: pieColors[colorIndex % pieColors.length],
-          value: amount,
-          title: '${percent.toStringAsFixed(1)}%',
-          radius: 60,
-          titleStyle: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
-        ),
-      );
-      colorIndex++;
-    });
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-            fontWeight: FontWeight.bold,
-            color: AppColors.getTextPrimaryColor(context),
-          ),
-        ),
-        const SizedBox(height: 16),
-        Center(
-          child: SizedBox(
-            height: 180,
-            child: Card(
-              color: Theme.of(context).colorScheme.surface,
-              elevation: 2,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(90),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: PieChart(
-                  PieChartData(
-                    sections: sections,
-                    centerSpaceRadius: 32,
-                    sectionsSpace: 2,
-                    borderData: FlBorderData(show: false),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 16),
-        ...categoryData.entries.map((entry) {
-          final category = entry.key;
-          final amount = entry.value;
-          final percentage = total > 0
-              ? (amount / total * 100).toStringAsFixed(1)
-              : '0.0';
-
-          return Card(
-            margin: const EdgeInsets.only(bottom: 12),
-            elevation: 2,
-            color: Theme.of(context).colorScheme.surface,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: ListTile(
-              contentPadding: const EdgeInsets.all(16),
-              leading: CircleAvatar(
-                backgroundColor: AppColors.getCategoryColor(category),
-                child: Icon(_getCategoryIcon(category), color: Colors.white),
-              ),
-              title: Text(
-                category,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                ),
-              ),
-              subtitle: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 4),
-                  Text(
-                    '$percentage% del total',
-                    style: TextStyle(
-                      color: AppColors.getTextSecondaryColor(context),
-                      fontSize: 14,
-                    ),
-                  ),
-                ],
-              ),
-              trailing: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    NumberFormat.currency(
-                      locale: 'es_MX',
-                      symbol: 'RD\$',
-                    ).format(amount),
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      color: color,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        }),
-      ],
+        );
+      },
     );
-  }
-
-  Color _getCategoryColor(String categoria) {
-    return AppColors.getCategoryColor(categoria);
-  }
-
-  IconData _getCategoryIcon(String categoria) {
-    switch (categoria.toLowerCase()) {
-      case 'comida':
-        return Icons.restaurant;
-      case 'transporte':
-        return Icons.directions_car;
-      case 'ocio':
-        return Icons.movie;
-      case 'servicios':
-        return Icons.home;
-      case 'ropa':
-        return Icons.checkroom;
-      case 'sueldo':
-        return Icons.work;
-      case 'venta':
-        return Icons.shopping_cart;
-      case 'regalo':
-        return Icons.card_giftcard;
-      default:
-        return Icons.category;
-    }
   }
 }

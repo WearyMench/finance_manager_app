@@ -1,150 +1,114 @@
-# Gestor de Gastos - Aplicación Flutter
+# Gestor de Gastos - Flutter App
 
-Una aplicación móvil completa para la gestión personal de gastos e ingresos, desarrollada con Flutter y Dart.
+Una aplicación móvil para gestionar gastos e ingresos personales, desarrollada en Flutter.
 
-## Características Principales
+## 🚀 Configuración para Compilar
 
-### Gestión Financiera
+### 1. Configurar la URL de la API
 
-- **Gastos e Ingresos**: Registro completo con categorías personalizables
-- **Balance en Tiempo Real**: Visualización de ingresos, gastos y balance mensual
-- **Presupuesto Mensual**: Configuración y seguimiento de presupuestos
-- **Múltiples Monedas**: Soporte para DOP, MXN, USD, EUR, COP, ARS
+Antes de compilar, debes configurar la URL de tu servidor backend:
 
-### Análisis y Estadísticas
-
-- **Gráficos Interactivos**: Gráficos de pastel y barras para visualizar gastos
-- **Estadísticas Detalladas**: Análisis por categoría, período y tipo
-- **Reportes Mensuales**: Resúmenes completos de actividad financiera
-
-### Funcionalidades Avanzadas
-
-- **Gastos Recurrentes**: Configuración de gastos semanales, quincenales, mensuales y anuales
-- **Plantillas de Gastos**: Creación y uso de plantillas favoritas
-- **Importación/Exportación CSV**: Backup y restauración de datos
-- **Búsqueda y Filtros**: Búsqueda avanzada por texto, categoría, fecha y monto
-
-### Interfaz de Usuario
-
-- **Diseño Moderno**: UI/UX intuitiva y atractiva
-- **Modo Oscuro/Claro**: Soporte completo para ambos temas
-- **Responsive**: Optimizada para móviles y tablets
-- **Accesibilidad**: Diseño inclusivo y fácil de usar
-
-## Tecnologías Utilizadas
-
-- **Flutter 3.32.5**: Framework de desarrollo multiplataforma
-- **Dart**: Lenguaje de programación
-- **SQLite**: Base de datos local con sqflite
-- **SharedPreferences**: Almacenamiento de configuraciones
-- **Charts**: Visualización de datos con fl_chart
-- **CSV**: Importación/exportación de datos
-
-## Plataformas Soportadas
-
-- ✅ Android
-- ✅ iOS
-- ✅ Windows
-- ✅ macOS
-- ✅ Linux
-
-## Instalación y Configuración
-
-### Prerrequisitos
-
-- Flutter SDK 3.32.5 o superior
-- Dart SDK
-- Android Studio / VS Code
-- Git
-
-### Pasos de Instalación
-
-1. **Clonar el repositorio**
-
-   ```bash
-   git clone [URL_DEL_REPOSITORIO]
-   cd gestor_gastos
+1. Abre el archivo `lib/config/api_config.dart`
+2. Cambia la URL en la línea `_prodUrl` por la URL de tu servidor:
+   ```dart
+   static const String _prodUrl = 'https://tu-servidor.com/api';
+   ```
+3. Cambia el entorno a 'production' para compilar:
+   ```dart
+   static const String _environment = 'production';
    ```
 
-2. **Instalar dependencias**
+### 2. Compilar la Aplicación
 
-   ```bash
-   flutter pub get
-   ```
+#### Para Android (APK):
 
-3. **Ejecutar la aplicación**
-   ```bash
-   flutter run
-   ```
-
-### Configuración para Desarrollo
-
-1. **Verificar Flutter**
-
-   ```bash
-   flutter doctor
-   ```
-
-2. **Analizar código**
-
-   ```bash
-   flutter analyze
-   ```
-
-3. **Ejecutar tests**
-   ```bash
-   flutter test
-   ```
-
-## Estructura del Proyecto
-
-```
-lib/
-├── main.dart                 # Punto de entrada de la aplicación
-├── db/
-│   └── database_helper.dart  # Gestión de base de datos SQLite
-├── models/
-│   ├── expense.dart          # Modelo de gastos
-│   ├── income.dart           # Modelo de ingresos
-│   └── expense_template.dart # Modelo de plantillas
-├── screens/
-│   ├── home_page.dart        # Pantalla principal
-│   ├── add_expense_page.dart # Agregar gastos
-│   ├── add_income_page.dart  # Agregar ingresos
-│   ├── stats_page.dart       # Estadísticas
-│   ├── templates_page.dart   # Gestión de plantillas
-│   └── ...                   # Otras pantallas
-└── utils/
-    ├── app_colors.dart       # Paleta de colores
-    └── web_csv_download.dart # Funcionalidades web
+```bash
+flutter build apk --release
 ```
 
-## Capturas de Pantalla
+#### Para Windows (Ejecutable):
 
-![Captura de pantalla principal](assets/screenshots/main_screen.png)
-_Pantalla principal con balance y estadísticas_
+```bash
+flutter build windows --release
+```
 
-![Agregar gasto](assets/screenshots/add_expense.png)
-_Formulario para agregar nuevos gastos_
+#### Para iOS (requiere Mac):
 
-![Estadísticas](assets/screenshots/stats_screen.png)
-_Gráficos y análisis financiero_
+```bash
+flutter build ios --release
+```
 
-![Plantillas](assets/screenshots/templates_screen.png)
-_Gestión de plantillas de gastos_
+### 3. Archivos Generados
 
-![Configuración](assets/screenshots/settings_screen.png)
-_Configuración de temas y preferencias_
+- **Android**: `build/app/outputs/flutter-apk/app-release.apk`
+- **Windows**: `build/windows/runner/Release/`
+- **iOS**: `build/ios/Release-iphoneos/`
 
-## Contribución
+## 🔧 Configuración del Backend
 
-1. Fork el proyecto
-2. Crea una rama para tu feature (`git checkout -b feature/AmazingFeature`)
-3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
-4. Push a la rama (`git push origin feature/AmazingFeature`)
-5. Abre un Pull Request
+Asegúrate de que tu servidor backend esté configurado con:
 
----
+1. **CORS habilitado** para permitir conexiones desde la app móvil
+2. **URL accesible** desde internet (no localhost)
+3. **HTTPS** recomendado para producción
 
-**Versión**: 1.0.0  
-**Última actualización**: Junio 2025
+### Ejemplo de configuración CORS en el backend:
+
+```javascript
+app.use(
+  cors({
+    origin: ["http://localhost:3000", "https://tu-dominio.com"],
+    credentials: true,
+  })
+);
+```
+
+## 📱 Instalación en Dispositivos
+
+### Android:
+
+1. Transfiere el archivo `.apk` al dispositivo
+2. Habilita "Fuentes desconocidas" en configuración
+3. Instala el APK
+
+### Windows:
+
+1. Copia toda la carpeta `Release/` al dispositivo
+2. Ejecuta `gestor_gastos.exe`
+
+## 🛠️ Desarrollo
+
+### Cambiar entre entornos:
+
+```dart
+// En lib/config/api_config.dart
+static const String _environment = 'development'; // o 'production'
+```
+
+### URLs de ejemplo:
+
+- **Desarrollo**: `http://localhost:5000/api`
+- **Producción**: `https://api.tu-dominio.com/api`
+- **Staging**: `https://staging-api.tu-dominio.com/api`
+
+## 📋 Requisitos
+
+- Flutter SDK 3.0+
+- Dart 3.0+
+- Backend funcionando y accesible
+- Conexión a internet
+
+## 🔒 Seguridad
+
+- La app usa JWT para autenticación
+- Los tokens se almacenan de forma segura
+- Todas las comunicaciones van por HTTPS en producción
+
+## 📞 Soporte
+
+Si tienes problemas:
+
+1. Verifica que la URL de la API sea correcta
+2. Asegúrate de que el backend esté funcionando
+3. Revisa la conexión a internet
+4. Verifica los logs de la consola para errores específicos

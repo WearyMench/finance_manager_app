@@ -27,7 +27,7 @@ class _AddIncomePageState extends State<AddIncomePage> {
   @override
   void initState() {
     super.initState();
-    _categories = widget.categories;
+    _categories = widget.categories.toSet().toList(); // Remove duplicates
     _selectedCategory = _categories.isNotEmpty ? _categories.first : '';
   }
 
