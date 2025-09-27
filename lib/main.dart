@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart'; // Para kIsWeb
 import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'screens/home_page.dart';
+import 'screens/main_screen.dart';
 import 'screens/auth/login_screen.dart';
 import 'providers/auth_provider.dart';
 import 'providers/transaction_provider.dart';
@@ -109,7 +109,7 @@ class _AppWrapperState extends State<AppWrapper> {
         }
 
         if (authProvider.isAuthenticated) {
-          return const HomePage();
+          return const MainScreen();
         }
 
         return const LoginScreen();

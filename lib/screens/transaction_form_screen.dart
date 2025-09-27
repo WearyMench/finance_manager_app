@@ -3,18 +3,16 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../providers/transaction_provider.dart';
 import '../models/api_models.dart' as api_models;
+import '../models/account.dart';
+import '../services/api_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/loading_overlay.dart';
 
 class TransactionFormScreen extends StatefulWidget {
-  final String type; // 'income' or 'expense'
+  final String? type; // 'income' or 'expense' - optional
   final api_models.Transaction? transaction; // For editing
 
-  const TransactionFormScreen({
-    super.key,
-    required this.type,
-    this.transaction,
-  });
+  const TransactionFormScreen({super.key, this.type, this.transaction});
 
   @override
   State<TransactionFormScreen> createState() => _TransactionFormScreenState();
@@ -26,7 +24,9 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
   final _descriptionController = TextEditingController();
 
   String? _selectedCategoryId;
+  String? _selectedAccountId;
   String _selectedPaymentMethod = 'cash';
+  String _selectedType = 'expense'; // Default to expense
   DateTime _selectedDate = DateTime.now();
 
   bool _isLoading = false;
@@ -34,6 +34,8 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
   String? _successMessage;
 
   final List<String> _paymentMethods = ['cash', 'transfer', 'debit', 'credit'];
+  List<Account> _accounts = [];
+  final ApiService _apiService = ApiService();
 
   final Map<String, String> _paymentMethodLabels = {
     'cash': 'Efectivo',
@@ -45,13 +47,20 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
   @override
   void initState() {
     super.initState();
+
+    // Set type from widget or default to expense
+    _selectedType = widget.type ?? 'expense';
+
     if (widget.transaction != null) {
       _amountController.text = widget.transaction!.amount.toString();
       _descriptionController.text = widget.transaction!.description;
       _selectedCategoryId = widget.transaction!.category.id;
+      _selectedAccountId = widget.transaction!.account.id;
       _selectedPaymentMethod = widget.transaction!.paymentMethod;
       _selectedDate = widget.transaction!.date;
+      _selectedType = widget.transaction!.type;
     }
+    _loadAccounts();
   }
 
   @override
@@ -68,6 +77,11 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
 
     if (_selectedCategoryId == null) {
       _showError('Por favor selecciona una categoría');
+      return;
+    }
+
+    if (_selectedAccountId == null) {
+      _showError('Por favor selecciona una cuenta');
       return;
     }
 
@@ -91,7 +105,7 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
         // Editing existing transaction
         success = await transactionProvider.updateTransaction(
           widget.transaction!.id,
-          type: widget.type,
+          type: _selectedType,
           amount: amount,
           description: description,
           category: _selectedCategoryId!,
@@ -101,11 +115,12 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
       } else {
         // Creating new transaction
         success = await transactionProvider.createTransaction(
-          type: widget.type,
+          type: _selectedType,
           amount: amount,
           description: description,
           category: _selectedCategoryId!,
           paymentMethod: _selectedPaymentMethod,
+          account: _selectedAccountId!,
           date: _selectedDate,
         );
       }
@@ -155,9 +170,36 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
     });
   }
 
+  Future<void> _loadAccounts() async {
+    try {
+      final response = await _apiService.getAccounts();
+      if (response.success && response.data != null) {
+        setState(() {
+          _accounts = (response.data as List)
+              .map((account) => Account.fromMap(account))
+              .toList();
+        });
+
+        // Auto-select default account if none selected
+        if (_selectedAccountId == null && _accounts.isNotEmpty) {
+          final defaultAccount = _accounts.firstWhere(
+            (account) => account.isDefault,
+            orElse: () => _accounts.first,
+          );
+          setState(() {
+            _selectedAccountId = defaultAccount.id;
+          });
+        }
+      }
+    } catch (e) {
+      // Handle error silently for now
+      print('Error loading accounts: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final isIncome = widget.type == 'income';
+    final isIncome = _selectedType == 'income';
     final isEditing = widget.transaction != null;
 
     return Scaffold(
@@ -422,6 +464,160 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
                       ),
                       const SizedBox(height: 16),
 
+                      // Type Selection Field (only show if not editing)
+                      if (widget.transaction == null) ...[
+                        Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: AppTheme.getBorderColor(context),
+                            ),
+                          ),
+                          child: Column(
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.swap_horiz,
+                                      color: AppTheme.getPrimaryColor(context),
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Text(
+                                      'Tipo de Transacción',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                        color: AppTheme.getTextPrimaryColor(
+                                          context,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: GestureDetector(
+                                      onTap: () {
+                                        setState(() {
+                                          _selectedType = 'income';
+                                        });
+                                      },
+                                      child: Container(
+                                        padding: const EdgeInsets.all(16),
+                                        decoration: BoxDecoration(
+                                          color: _selectedType == 'income'
+                                              ? AppTheme.getSuccessColor(
+                                                  context,
+                                                ).withOpacity(0.1)
+                                              : Colors.transparent,
+                                          borderRadius: const BorderRadius.only(
+                                            bottomLeft: Radius.circular(12),
+                                          ),
+                                        ),
+                                        child: Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            Icon(
+                                              Icons.trending_up,
+                                              color: _selectedType == 'income'
+                                                  ? AppTheme.getSuccessColor(
+                                                      context,
+                                                    )
+                                                  : Colors.grey[600],
+                                              size: 20,
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Text(
+                                              'Ingreso',
+                                              style: TextStyle(
+                                                color: _selectedType == 'income'
+                                                    ? AppTheme.getSuccessColor(
+                                                        context,
+                                                      )
+                                                    : Colors.grey[600],
+                                                fontWeight:
+                                                    _selectedType == 'income'
+                                                    ? FontWeight.w600
+                                                    : FontWeight.normal,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  Container(
+                                    width: 1,
+                                    height: 40,
+                                    color: AppTheme.getBorderColor(context),
+                                  ),
+                                  Expanded(
+                                    child: GestureDetector(
+                                      onTap: () {
+                                        setState(() {
+                                          _selectedType = 'expense';
+                                        });
+                                      },
+                                      child: Container(
+                                        padding: const EdgeInsets.all(16),
+                                        decoration: BoxDecoration(
+                                          color: _selectedType == 'expense'
+                                              ? AppTheme.getErrorColor(
+                                                  context,
+                                                ).withOpacity(0.1)
+                                              : Colors.transparent,
+                                          borderRadius: const BorderRadius.only(
+                                            bottomRight: Radius.circular(12),
+                                          ),
+                                        ),
+                                        child: Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            Icon(
+                                              Icons.trending_down,
+                                              color: _selectedType == 'expense'
+                                                  ? AppTheme.getErrorColor(
+                                                      context,
+                                                    )
+                                                  : Colors.grey[600],
+                                              size: 20,
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Text(
+                                              'Gasto',
+                                              style: TextStyle(
+                                                color:
+                                                    _selectedType == 'expense'
+                                                    ? AppTheme.getErrorColor(
+                                                        context,
+                                                      )
+                                                    : Colors.grey[600],
+                                                fontWeight:
+                                                    _selectedType == 'expense'
+                                                    ? FontWeight.w600
+                                                    : FontWeight.normal,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+
                       // Description Field
                       TextFormField(
                         controller: _descriptionController,
@@ -467,7 +663,7 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
                       Consumer<TransactionProvider>(
                         builder: (context, transactionProvider, child) {
                           final categories = transactionProvider.categories
-                              .where((cat) => cat.type == widget.type)
+                              .where((cat) => cat.type == _selectedType)
                               .toList();
 
                           return DropdownButtonFormField<String>(
@@ -504,6 +700,7 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
                               return DropdownMenuItem<String>(
                                 value: category.id,
                                 child: Row(
+                                  mainAxisSize: MainAxisSize.min,
                                   children: [
                                     Container(
                                       width: 12,
@@ -544,6 +741,95 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
                               return null;
                             },
                           );
+                        },
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Account Field
+                      DropdownButtonFormField<String>(
+                        value: _selectedAccountId,
+                        decoration: InputDecoration(
+                          labelText: 'Cuenta *',
+                          prefixIcon: Icon(
+                            Icons.account_balance,
+                            color: AppTheme.getPrimaryColor(context),
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: AppTheme.getBorderColor(context),
+                            ),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: AppTheme.getBorderColor(context),
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: AppTheme.getPrimaryColor(context),
+                              width: 2,
+                            ),
+                          ),
+                          filled: true,
+                          fillColor: AppTheme.getSurfaceColor(context),
+                        ),
+                        items: _accounts.map((account) {
+                          return DropdownMenuItem<String>(
+                            value: account.id,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  account.typeIcon,
+                                  size: 20,
+                                  color: Theme.of(context).primaryColor,
+                                ),
+                                const SizedBox(width: 12),
+                                Flexible(
+                                  child: Text(
+                                    account.name,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                if (account.isDefault)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 6,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.green[100],
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: const Text(
+                                      'Principal',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        color: Colors.green,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          );
+                        }).toList(),
+                        onChanged: (value) {
+                          setState(() {
+                            _selectedAccountId = value;
+                          });
+                        },
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Por favor selecciona una cuenta';
+                          }
+                          return null;
                         },
                       ),
                       const SizedBox(height: 16),
@@ -664,36 +950,43 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
                             ),
                             padding: const EdgeInsets.symmetric(vertical: 16),
                           ),
-                          child: _isLoading
-                              ? SizedBox(
-                                  height: 20,
-                                  width: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation<Color>(
-                                      Colors.white,
-                                    ),
-                                  ),
-                                )
-                              : Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      isEditing ? Icons.save : Icons.add,
-                                      size: 20,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      isEditing
-                                          ? 'Actualizar'
-                                          : 'Agregar ${isIncome ? 'Ingreso' : 'Gasto'}',
-                                      style: const TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w600,
+                          child: AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 200),
+                            child: _isLoading
+                                ? SizedBox(
+                                    key: const ValueKey('loading'),
+                                    height: 20,
+                                    width: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                        Colors.white,
                                       ),
                                     ),
-                                  ],
-                                ),
+                                  )
+                                : Row(
+                                    key: const ValueKey('button'),
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        isEditing
+                                            ? Icons.save_rounded
+                                            : Icons.add_rounded,
+                                        size: 20,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        isEditing
+                                            ? 'Actualizar'
+                                            : 'Agregar ${isIncome ? 'Ingreso' : 'Gasto'}',
+                                        style: const TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                          ),
                         ),
                       ),
                     ],

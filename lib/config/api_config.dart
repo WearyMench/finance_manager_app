@@ -5,7 +5,7 @@ class ApiConfig {
       'https://tu-servidor.com/api'; // URL de producción
 
   // Cambia esto a 'production' cuando quieras compilar para producción
-  static const String _environment = 'production';
+  static const String _environment = 'development';
 
   static String get baseUrl {
     switch (_environment) {

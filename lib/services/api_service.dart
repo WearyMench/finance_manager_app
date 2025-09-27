@@ -17,6 +17,13 @@ class ApiService {
     _token = prefs.getString('auth_token');
   }
 
+  // Ensure token is loaded before making requests
+  Future<void> _ensureTokenLoaded() async {
+    if (_token == null) {
+      await _loadToken();
+    }
+  }
+
   Future<void> _saveToken(String token) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('auth_token', token);
@@ -38,19 +45,72 @@ class ApiService {
     http.Response response,
     T Function(Map<String, dynamic>) fromJson,
   ) async {
-    if (response.statusCode >= 200 && response.statusCode < 300) {
-      final data = json.decode(response.body);
-      return ApiResponse<T>(
-        success: true,
-        data: fromJson(data),
-        message: data['message'],
-      );
-    } else {
-      final error = json.decode(response.body);
+    try {
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = json.decode(response.body);
+
+        // Handle different response structures
+        T parsedData;
+        if (data is List) {
+          // For list responses, the data is already the list
+          parsedData = data as T;
+        } else if (data is Map<String, dynamic>) {
+          // For object responses, use fromJson
+          parsedData = fromJson(data);
+        } else {
+          // For primitive responses, use as is
+          parsedData = data as T;
+        }
+
+        return ApiResponse<T>(
+          success: true,
+          data: parsedData,
+          message: data is Map<String, dynamic> ? data['message'] : null,
+        );
+      } else {
+        final error = json.decode(response.body);
+        String errorMessage = 'Error desconocido';
+
+        // Manejo específico de códigos de error HTTP
+        switch (response.statusCode) {
+          case 400:
+            errorMessage = error['message'] ?? 'Datos inválidos';
+            break;
+          case 401:
+            errorMessage = error['message'] ?? 'No autorizado';
+            break;
+          case 403:
+            errorMessage = error['message'] ?? 'Acceso denegado';
+            break;
+          case 404:
+            errorMessage = error['message'] ?? 'Recurso no encontrado';
+            break;
+          case 422:
+            errorMessage = error['message'] ?? 'Datos de entrada inválidos';
+            break;
+          case 500:
+            errorMessage = 'Error interno del servidor. Inténtalo más tarde';
+            break;
+          case 503:
+            errorMessage = 'Servicio no disponible. Inténtalo más tarde';
+            break;
+          default:
+            errorMessage =
+                error['message'] ??
+                'Error del servidor (${response.statusCode})';
+        }
+
+        return ApiResponse<T>(
+          success: false,
+          message: errorMessage,
+          error: error['error'],
+        );
+      }
+    } catch (e) {
       return ApiResponse<T>(
         success: false,
-        message: error['message'] ?? 'Error desconocido',
-        error: error['error'],
+        message: 'Error al procesar la respuesta del servidor',
+        error: e.toString(),
       );
     }
   }
@@ -60,10 +120,18 @@ class ApiService {
     T Function(Map<String, dynamic>) fromJson,
   ) async {
     try {
-      final response = await request();
+      // Ensure token is loaded before making the request
+      await _ensureTokenLoaded();
+
+      final response = await request().timeout(
+        const Duration(seconds: 30),
+        onTimeout: () {
+          throw Exception('TimeoutException');
+        },
+      );
       return await _handleResponse(response, fromJson);
     } on http.ClientException catch (e) {
-      // Manejo simplificado de errores de conexión
+      // Manejo específico de errores de conexión
       if (e.message.contains('Failed host lookup') ||
           e.message.contains('no address associated with hostname')) {
         return ApiResponse<T>(
@@ -82,10 +150,22 @@ class ApiService {
           message: 'Error de conexión. Verifica tu internet.',
         );
       }
-    } catch (e) {
+    } on Exception catch (e) {
+      if (e.toString().contains('TimeoutException')) {
+        return ApiResponse<T>(
+          success: false,
+          message: 'La conexión tardó demasiado. Inténtalo nuevamente.',
+        );
+      }
       return ApiResponse<T>(
         success: false,
         message: 'Error de conexión. Inténtalo más tarde.',
+      );
+    } catch (e) {
+      return ApiResponse<T>(
+        success: false,
+        message: 'Error inesperado. Inténtalo más tarde.',
+        error: e.toString(),
       );
     }
   }
@@ -178,28 +258,76 @@ class ApiService {
     String? startDate,
     String? endDate,
   }) async {
+    final queryParams = <String, String>{
+      'page': page.toString(),
+      'limit': limit.toString(),
+      if (type != null) 'type': type,
+      if (category != null) 'category': category,
+      if (startDate != null) 'startDate': startDate,
+      if (endDate != null) 'endDate': endDate,
+    };
+
+    final uri = Uri.parse(
+      '$baseUrl/transactions',
+    ).replace(queryParameters: queryParams);
+
     try {
-      final queryParams = <String, String>{
-        'page': page.toString(),
-        'limit': limit.toString(),
-        if (type != null) 'type': type,
-        if (category != null) 'category': category,
-        if (startDate != null) 'startDate': startDate,
-        if (endDate != null) 'endDate': endDate,
-      };
+      await _ensureTokenLoaded();
+      final response = await http
+          .get(uri, headers: _headers)
+          .timeout(
+            const Duration(seconds: 30),
+            onTimeout: () {
+              throw Exception('TimeoutException');
+            },
+          );
 
-      final uri = Uri.parse(
-        '$baseUrl/transactions',
-      ).replace(queryParameters: queryParams);
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = json.decode(response.body);
+        List<Transaction> transactions = [];
 
-      final response = await http.get(uri, headers: _headers);
+        if (data is List) {
+          transactions = data.map((t) {
+            return Transaction.fromJson(t as Map<String, dynamic>);
+          }).toList();
+        } else if (data is Map<String, dynamic>) {
+          if (data.containsKey('transactions')) {
+            final transactionsList = data['transactions'] as List;
+            transactions = transactionsList.map((t) {
+              if (t is Map<String, dynamic>) {
+                return Transaction.fromJson(t);
+              } else if (t is Transaction) {
+                return t;
+              } else {
+                return Transaction.fromJson(t as Map<String, dynamic>);
+              }
+            }).toList();
+          } else if (data.containsKey('data') && data['data'] is List) {
+            final transactionsList = data['data'] as List;
+            transactions = transactionsList.map((t) {
+              if (t is Map<String, dynamic>) {
+                return Transaction.fromJson(t);
+              } else if (t is Transaction) {
+                return t;
+              } else {
+                return Transaction.fromJson(t as Map<String, dynamic>);
+              }
+            }).toList();
+          }
+        }
 
-      return await _handleResponse<List<Transaction>>(
-        response,
-        (data) => (data['transactions'] as List)
-            .map((t) => Transaction.fromJson(t))
-            .toList(),
-      );
+        return ApiResponse<List<Transaction>>(
+          success: true,
+          data: transactions,
+          message: data is Map<String, dynamic> ? data['message'] : null,
+        );
+      } else {
+        final error = json.decode(response.body);
+        return ApiResponse<List<Transaction>>(
+          success: false,
+          message: error['message'] ?? 'Error al cargar transacciones',
+        );
+      }
     } catch (e) {
       return ApiResponse<List<Transaction>>(
         success: false,
@@ -214,6 +342,7 @@ class ApiService {
     required String description,
     required String category,
     required String paymentMethod,
+    required String account,
     required DateTime date,
   }) async {
     try {
@@ -226,14 +355,28 @@ class ApiService {
           'description': description,
           'category': category,
           'paymentMethod': paymentMethod,
+          'account': account,
           'date': date.toIso8601String(),
         }),
       );
 
-      return await _handleResponse<Transaction>(
+      final result = await _handleResponse<Map<String, dynamic>>(
         response,
-        (data) => Transaction.fromJson(data['transaction']),
+        (data) => data,
       );
+
+      if (result.success && result.data != null) {
+        return ApiResponse<Transaction>(
+          success: true,
+          message: result.message,
+          data: Transaction.fromJson(result.data!['transaction']),
+        );
+      } else {
+        return ApiResponse<Transaction>(
+          success: false,
+          message: result.message,
+        );
+      }
     } catch (e) {
       return ApiResponse<Transaction>(
         success: false,
@@ -308,17 +451,68 @@ class ApiService {
   // Category methods
   Future<ApiResponse<List<Category>>> getCategories() async {
     try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/categories'),
-        headers: _headers,
-      );
+      await _ensureTokenLoaded();
+      final response = await http
+          .get(Uri.parse('$baseUrl/categories'), headers: _headers)
+          .timeout(
+            const Duration(seconds: 30),
+            onTimeout: () {
+              throw Exception('TimeoutException');
+            },
+          );
 
-      return await _handleResponse<List<Category>>(
-        response,
-        (data) => (data['categories'] as List)
-            .map((c) => Category.fromJson(c))
-            .toList(),
-      );
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = json.decode(response.body);
+        List<Category> categories = [];
+
+        if (data is List) {
+          categories = data.map((c) {
+            if (c is Map<String, dynamic>) {
+              return Category.fromJson(c);
+            } else if (c is Category) {
+              return c;
+            } else {
+              return Category.fromJson(c as Map<String, dynamic>);
+            }
+          }).toList();
+        } else if (data is Map<String, dynamic>) {
+          if (data.containsKey('categories')) {
+            final categoriesList = data['categories'] as List;
+            categories = categoriesList.map((c) {
+              if (c is Map<String, dynamic>) {
+                return Category.fromJson(c);
+              } else if (c is Category) {
+                return c;
+              } else {
+                return Category.fromJson(c as Map<String, dynamic>);
+              }
+            }).toList();
+          } else if (data.containsKey('data') && data['data'] is List) {
+            final categoriesList = data['data'] as List;
+            categories = categoriesList.map((c) {
+              if (c is Map<String, dynamic>) {
+                return Category.fromJson(c);
+              } else if (c is Category) {
+                return c;
+              } else {
+                return Category.fromJson(c as Map<String, dynamic>);
+              }
+            }).toList();
+          }
+        }
+
+        return ApiResponse<List<Category>>(
+          success: true,
+          data: categories,
+          message: data is Map<String, dynamic> ? data['message'] : null,
+        );
+      } else {
+        final error = json.decode(response.body);
+        return ApiResponse<List<Category>>(
+          success: false,
+          message: error['message'] ?? 'Error al cargar categorías',
+        );
+      }
     } catch (e) {
       return ApiResponse<List<Category>>(
         success: false,
@@ -410,23 +604,78 @@ class ApiService {
     int page = 1,
     int limit = 100,
   }) async {
+    final queryParams = <String, String>{
+      'page': page.toString(),
+      'limit': limit.toString(),
+    };
+
+    final uri = Uri.parse(
+      '$baseUrl/budgets',
+    ).replace(queryParameters: queryParams);
+
     try {
-      final queryParams = <String, String>{
-        'page': page.toString(),
-        'limit': limit.toString(),
-      };
+      await _ensureTokenLoaded();
+      final response = await http
+          .get(uri, headers: _headers)
+          .timeout(
+            const Duration(seconds: 30),
+            onTimeout: () {
+              throw Exception('TimeoutException');
+            },
+          );
 
-      final uri = Uri.parse(
-        '$baseUrl/budgets',
-      ).replace(queryParameters: queryParams);
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = json.decode(response.body);
+        List<Budget> budgets = [];
 
-      final response = await http.get(uri, headers: _headers);
+        if (data is List) {
+          budgets = data.map((b) {
+            if (b is Map<String, dynamic>) {
+              return Budget.fromJson(b);
+            } else if (b is Budget) {
+              return b;
+            } else {
+              return Budget.fromJson(b as Map<String, dynamic>);
+            }
+          }).toList();
+        } else if (data is Map<String, dynamic>) {
+          if (data.containsKey('budgets')) {
+            final budgetsList = data['budgets'] as List;
+            budgets = budgetsList.map((b) {
+              if (b is Map<String, dynamic>) {
+                return Budget.fromJson(b);
+              } else if (b is Budget) {
+                return b;
+              } else {
+                return Budget.fromJson(b as Map<String, dynamic>);
+              }
+            }).toList();
+          } else if (data.containsKey('data') && data['data'] is List) {
+            final budgetsList = data['data'] as List;
+            budgets = budgetsList.map((b) {
+              if (b is Map<String, dynamic>) {
+                return Budget.fromJson(b);
+              } else if (b is Budget) {
+                return b;
+              } else {
+                return Budget.fromJson(b as Map<String, dynamic>);
+              }
+            }).toList();
+          }
+        }
 
-      return await _handleResponse<List<Budget>>(
-        response,
-        (data) =>
-            (data['budgets'] as List).map((b) => Budget.fromJson(b)).toList(),
-      );
+        return ApiResponse<List<Budget>>(
+          success: true,
+          data: budgets,
+          message: data is Map<String, dynamic> ? data['message'] : null,
+        );
+      } else {
+        final error = json.decode(response.body);
+        return ApiResponse<List<Budget>>(
+          success: false,
+          message: error['message'] ?? 'Error al cargar presupuestos',
+        );
+      }
     } catch (e) {
       return ApiResponse<List<Budget>>(
         success: false,
@@ -594,7 +843,9 @@ class ApiService {
     }
   }
 
-  Future<ApiResponse<void>> deleteAccount({required String password}) async {
+  Future<ApiResponse<void>> deleteUserAccount({
+    required String password,
+  }) async {
     try {
       final response = await http.delete(
         Uri.parse('$baseUrl/user/account'),
@@ -633,6 +884,416 @@ class ApiService {
       );
     } catch (e) {
       return ApiResponse<TransactionStats>(
+        success: false,
+        message: 'Error de conexión: $e',
+      );
+    }
+  }
+
+  // Account methods
+  Future<ApiResponse<List<dynamic>>> getAccounts() async {
+    try {
+      await _ensureTokenLoaded();
+      final response = await http
+          .get(Uri.parse('$baseUrl/accounts'), headers: _headers)
+          .timeout(
+            const Duration(seconds: 30),
+            onTimeout: () {
+              throw Exception('TimeoutException');
+            },
+          );
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = json.decode(response.body);
+        List<dynamic> accounts = [];
+
+        if (data is List) {
+          accounts = data;
+        } else if (data is Map<String, dynamic>) {
+          if (data.containsKey('accounts')) {
+            accounts = data['accounts'] as List;
+          } else if (data.containsKey('data') && data['data'] is List) {
+            accounts = data['data'] as List;
+          }
+        }
+
+        return ApiResponse<List<dynamic>>(
+          success: true,
+          data: accounts,
+          message: data is Map<String, dynamic> ? data['message'] : null,
+        );
+      } else {
+        final error = json.decode(response.body);
+        return ApiResponse<List<dynamic>>(
+          success: false,
+          message: error['message'] ?? 'Error al cargar cuentas',
+        );
+      }
+    } catch (e) {
+      return ApiResponse<List<dynamic>>(
+        success: false,
+        message: 'Error de conexión: $e',
+      );
+    }
+  }
+
+  Future<ApiResponse<Map<String, dynamic>>> getAccount(String accountId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/accounts/$accountId'),
+        headers: _headers,
+      );
+
+      return await _handleResponse<Map<String, dynamic>>(
+        response,
+        (data) => data['data'] as Map<String, dynamic>,
+      );
+    } catch (e) {
+      return ApiResponse<Map<String, dynamic>>(
+        success: false,
+        message: 'Error de conexión: $e',
+      );
+    }
+  }
+
+  Future<ApiResponse<Map<String, dynamic>>> createAccount(
+    Map<String, dynamic> accountData,
+  ) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/accounts'),
+        headers: _headers,
+        body: json.encode(accountData),
+      );
+
+      return await _handleResponse<Map<String, dynamic>>(
+        response,
+        (data) => data['data'] as Map<String, dynamic>,
+      );
+    } catch (e) {
+      return ApiResponse<Map<String, dynamic>>(
+        success: false,
+        message: 'Error de conexión: $e',
+      );
+    }
+  }
+
+  Future<ApiResponse<Map<String, dynamic>>> updateAccount(
+    String accountId,
+    Map<String, dynamic> accountData,
+  ) async {
+    try {
+      final response = await http.put(
+        Uri.parse('$baseUrl/accounts/$accountId'),
+        headers: _headers,
+        body: json.encode(accountData),
+      );
+
+      return await _handleResponse<Map<String, dynamic>>(
+        response,
+        (data) => data['data'] as Map<String, dynamic>,
+      );
+    } catch (e) {
+      return ApiResponse<Map<String, dynamic>>(
+        success: false,
+        message: 'Error de conexión: $e',
+      );
+    }
+  }
+
+  Future<ApiResponse<void>> deleteAccount(String accountId) async {
+    try {
+      final response = await http.delete(
+        Uri.parse('$baseUrl/accounts/$accountId'),
+        headers: _headers,
+      );
+
+      return await _handleResponse<void>(response, (data) => null);
+    } catch (e) {
+      return ApiResponse<void>(
+        success: false,
+        message: 'Error de conexión: $e',
+      );
+    }
+  }
+
+  Future<ApiResponse<Map<String, dynamic>>> transferMoney(
+    String fromAccountId,
+    Map<String, dynamic> transferData,
+  ) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/accounts/$fromAccountId/transfer'),
+        headers: _headers,
+        body: json.encode(transferData),
+      );
+
+      return await _handleResponse<Map<String, dynamic>>(
+        response,
+        (data) => data['data'] as Map<String, dynamic>,
+      );
+    } catch (e) {
+      return ApiResponse<Map<String, dynamic>>(
+        success: false,
+        message: 'Error de conexión: $e',
+      );
+    }
+  }
+
+  // Transfer Category methods
+  Future<ApiResponse<List<dynamic>>> getTransferCategories() async {
+    try {
+      await _ensureTokenLoaded();
+      final response = await http
+          .get(Uri.parse('$baseUrl/transfer-categories'), headers: _headers)
+          .timeout(
+            const Duration(seconds: 30),
+            onTimeout: () {
+              throw Exception('TimeoutException');
+            },
+          );
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = json.decode(response.body);
+        List<dynamic> categories = [];
+
+        if (data is List) {
+          categories = data;
+        } else if (data is Map<String, dynamic> && data['data'] != null) {
+          categories = data['data'] as List<dynamic>;
+        }
+
+        return ApiResponse<List<dynamic>>(
+          success: true,
+          data: categories,
+          message: data['message'],
+        );
+      } else {
+        return ApiResponse<List<dynamic>>(
+          success: false,
+          message: 'Error del servidor: ${response.statusCode}',
+        );
+      }
+    } catch (e) {
+      return ApiResponse<List<dynamic>>(
+        success: false,
+        message: 'Error de conexión: $e',
+      );
+    }
+  }
+
+  Future<ApiResponse<Map<String, dynamic>>> createTransferCategory(
+    Map<String, dynamic> categoryData,
+  ) async {
+    try {
+      await _ensureTokenLoaded();
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/transfer-categories'),
+            headers: _headers,
+            body: json.encode(categoryData),
+          )
+          .timeout(
+            const Duration(seconds: 30),
+            onTimeout: () {
+              throw Exception('TimeoutException');
+            },
+          );
+
+      return await _handleResponse<Map<String, dynamic>>(
+        response,
+        (data) => data['data'] as Map<String, dynamic>,
+      );
+    } catch (e) {
+      return ApiResponse<Map<String, dynamic>>(
+        success: false,
+        message: 'Error de conexión: $e',
+      );
+    }
+  }
+
+  Future<ApiResponse<Map<String, dynamic>>> updateTransferCategory(
+    String categoryId,
+    Map<String, dynamic> categoryData,
+  ) async {
+    try {
+      await _ensureTokenLoaded();
+      final response = await http
+          .put(
+            Uri.parse('$baseUrl/transfer-categories/$categoryId'),
+            headers: _headers,
+            body: json.encode(categoryData),
+          )
+          .timeout(
+            const Duration(seconds: 30),
+            onTimeout: () {
+              throw Exception('TimeoutException');
+            },
+          );
+
+      return await _handleResponse<Map<String, dynamic>>(
+        response,
+        (data) => data['data'] as Map<String, dynamic>,
+      );
+    } catch (e) {
+      return ApiResponse<Map<String, dynamic>>(
+        success: false,
+        message: 'Error de conexión: $e',
+      );
+    }
+  }
+
+  Future<ApiResponse> deleteTransferCategory(String categoryId) async {
+    try {
+      await _ensureTokenLoaded();
+      final response = await http
+          .delete(
+            Uri.parse('$baseUrl/transfer-categories/$categoryId'),
+            headers: _headers,
+          )
+          .timeout(
+            const Duration(seconds: 30),
+            onTimeout: () {
+              throw Exception('TimeoutException');
+            },
+          );
+
+      return await _handleResponse(response, (data) => data);
+    } catch (e) {
+      return ApiResponse(success: false, message: 'Error de conexión: $e');
+    }
+  }
+
+  // Account Reports methods
+  Future<ApiResponse<Map<String, dynamic>>> getBalanceSummary() async {
+    try {
+      await _ensureTokenLoaded();
+      final response = await http
+          .get(
+            Uri.parse('$baseUrl/account-reports/balance-summary'),
+            headers: _headers,
+          )
+          .timeout(
+            const Duration(seconds: 30),
+            onTimeout: () {
+              throw Exception('TimeoutException');
+            },
+          );
+
+      return await _handleResponse<Map<String, dynamic>>(
+        response,
+        (data) => data['data'] as Map<String, dynamic>,
+      );
+    } catch (e) {
+      return ApiResponse<Map<String, dynamic>>(
+        success: false,
+        message: 'Error de conexión: $e',
+      );
+    }
+  }
+
+  Future<ApiResponse<Map<String, dynamic>>> getCashFlow({
+    String? startDate,
+    String? endDate,
+    String? accountId,
+  }) async {
+    try {
+      await _ensureTokenLoaded();
+      String url = '$baseUrl/account-reports/cash-flow';
+      List<String> params = [];
+
+      if (startDate != null) params.add('startDate=$startDate');
+      if (endDate != null) params.add('endDate=$endDate');
+      if (accountId != null) params.add('accountId=$accountId');
+
+      if (params.isNotEmpty) {
+        url += '?${params.join('&')}';
+      }
+
+      final response = await http
+          .get(Uri.parse(url), headers: _headers)
+          .timeout(
+            const Duration(seconds: 30),
+            onTimeout: () {
+              throw Exception('TimeoutException');
+            },
+          );
+
+      return await _handleResponse<Map<String, dynamic>>(
+        response,
+        (data) => data['data'] as Map<String, dynamic>,
+      );
+    } catch (e) {
+      return ApiResponse<Map<String, dynamic>>(
+        success: false,
+        message: 'Error de conexión: $e',
+      );
+    }
+  }
+
+  Future<ApiResponse<Map<String, dynamic>>> getAccountAnalysis(
+    String accountId, {
+    String? startDate,
+    String? endDate,
+  }) async {
+    try {
+      await _ensureTokenLoaded();
+      String url = '$baseUrl/account-reports/account-analysis/$accountId';
+      List<String> params = [];
+
+      if (startDate != null) params.add('startDate=$startDate');
+      if (endDate != null) params.add('endDate=$endDate');
+
+      if (params.isNotEmpty) {
+        url += '?${params.join('&')}';
+      }
+
+      final response = await http
+          .get(Uri.parse(url), headers: _headers)
+          .timeout(
+            const Duration(seconds: 30),
+            onTimeout: () {
+              throw Exception('TimeoutException');
+            },
+          );
+
+      return await _handleResponse<Map<String, dynamic>>(
+        response,
+        (data) => data['data'] as Map<String, dynamic>,
+      );
+    } catch (e) {
+      return ApiResponse<Map<String, dynamic>>(
+        success: false,
+        message: 'Error de conexión: $e',
+      );
+    }
+  }
+
+  Future<ApiResponse<Map<String, dynamic>>> getBalanceProjection({
+    int months = 6,
+  }) async {
+    try {
+      await _ensureTokenLoaded();
+      final response = await http
+          .get(
+            Uri.parse(
+              '$baseUrl/account-reports/balance-projection?months=$months',
+            ),
+            headers: _headers,
+          )
+          .timeout(
+            const Duration(seconds: 30),
+            onTimeout: () {
+              throw Exception('TimeoutException');
+            },
+          );
+
+      return await _handleResponse<Map<String, dynamic>>(
+        response,
+        (data) => data['data'] as Map<String, dynamic>,
+      );
+    } catch (e) {
+      return ApiResponse<Map<String, dynamic>>(
         success: false,
         message: 'Error de conexión: $e',
       );

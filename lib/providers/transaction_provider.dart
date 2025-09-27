@@ -50,9 +50,9 @@ class TransactionProvider with ChangeNotifier {
 
   double get monthlyBalance => monthlyIncome - monthlyExpenses;
 
-  Future<void> loadData() async {
-    // Don't show loading if we already have data
-    if (_transactions.isNotEmpty && _categories.isNotEmpty) {
+  Future<void> loadData({bool forceReload = false}) async {
+    // Don't show loading if we already have data and not forcing reload
+    if (!forceReload && _transactions.isNotEmpty && _categories.isNotEmpty) {
       return;
     }
 
@@ -82,7 +82,7 @@ class TransactionProvider with ChangeNotifier {
       if (categoriesResponse.success && categoriesResponse.data != null) {
         _categories = categoriesResponse.data!;
       } else {
-        _error = categoriesResponse.message ?? 'Error al cargar categorías';
+        print('Error loading categories: ${categoriesResponse.message}');
         _categories = _getDefaultCategories();
       }
 
@@ -90,19 +90,23 @@ class TransactionProvider with ChangeNotifier {
       if (transactionsResponse.success && transactionsResponse.data != null) {
         _transactions = transactionsResponse.data!;
       } else {
-        _error =
-            transactionsResponse.message ?? 'Error al cargar transacciones';
+        print('Error loading transactions: ${transactionsResponse.message}');
+        _transactions = [];
       }
 
       // Load budgets
       if (budgetsResponse.success && budgetsResponse.data != null) {
         _budgets = budgetsResponse.data!;
       } else {
-        _error = budgetsResponse.message ?? 'Error al cargar presupuestos';
+        print('Error loading budgets: ${budgetsResponse.message}');
+        _budgets = [];
       }
     } catch (e) {
+      print('Error loading data: $e');
       _error = 'Error de conexión: $e';
       _categories = _getDefaultCategories();
+      _transactions = [];
+      _budgets = [];
     } finally {
       _setLoading(false);
     }
@@ -114,6 +118,7 @@ class TransactionProvider with ChangeNotifier {
     required String description,
     required String category,
     required String paymentMethod,
+    required String account,
     required DateTime date,
   }) async {
     _setLoading(true);
@@ -126,6 +131,7 @@ class TransactionProvider with ChangeNotifier {
         description: description,
         category: category,
         paymentMethod: paymentMethod,
+        account: account,
         date: date,
       );
 

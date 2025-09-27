@@ -1,3 +1,5 @@
+import 'account.dart';
+
 // Base API Response
 class ApiResponse<T> {
   final bool success;
@@ -102,6 +104,9 @@ class Transaction {
   final String description;
   final Category category; // Now it's a Category object
   final String paymentMethod; // 'cash', 'transfer', 'debit', 'credit'
+  final Account account; // Account object
+  final Account? toAccount; // For transfers
+  final String transferType; // 'expense', 'income', 'transfer'
   final DateTime date;
   final DateTime createdAt;
 
@@ -112,20 +117,51 @@ class Transaction {
     required this.description,
     required this.category,
     required this.paymentMethod,
+    required this.account,
+    this.toAccount,
+    required this.transferType,
     required this.date,
     required this.createdAt,
   });
 
   factory Transaction.fromJson(Map<String, dynamic> json) {
     return Transaction(
-      id: json['id'] as String,
-      type: json['type'] as String,
-      amount: (json['amount'] as num).toDouble(),
-      description: json['description'] as String,
-      category: Category.fromJson(json['category'] as Map<String, dynamic>),
-      paymentMethod: json['paymentMethod'] as String,
-      date: DateTime.parse(json['date'] as String),
-      createdAt: DateTime.parse(json['createdAt'] as String),
+      id: json['id']?.toString() ?? '',
+      type: json['type']?.toString() ?? 'expense',
+      amount: (json['amount'] as num?)?.toDouble() ?? 0.0,
+      description: json['description']?.toString() ?? '',
+      category: json['category'] != null
+          ? Category.fromJson(json['category'] as Map<String, dynamic>)
+          : Category(
+              id: '',
+              name: 'Sin categoría',
+              type: 'expense',
+              color: '#999999',
+              icon: 'category',
+            ),
+      paymentMethod: json['paymentMethod']?.toString() ?? 'cash',
+      account: json['account'] != null
+          ? Account.fromMap(json['account'] as Map<String, dynamic>)
+          : Account(
+              name: 'Cuenta desconocida',
+              type: 'cash',
+              balance: 0.0,
+              currency: 'USD',
+              isActive: true,
+              isDefault: false,
+              createdAt: DateTime.now(),
+              updatedAt: DateTime.now(),
+            ),
+      toAccount: json['toAccount'] != null
+          ? Account.fromMap(json['toAccount'] as Map<String, dynamic>)
+          : null,
+      transferType: json['transferType']?.toString() ?? 'expense',
+      date: json['date'] != null
+          ? DateTime.parse(json['date'] as String)
+          : DateTime.now(),
+      createdAt: json['createdAt'] != null
+          ? DateTime.parse(json['createdAt'] as String)
+          : DateTime.now(),
     );
   }
 
@@ -137,6 +173,9 @@ class Transaction {
       'description': description,
       'category': category.toJson(),
       'paymentMethod': paymentMethod,
+      'account': account.id,
+      'toAccount': toAccount?.id,
+      'transferType': transferType,
       'date': date.toIso8601String(),
       'createdAt': createdAt.toIso8601String(),
     };
@@ -161,11 +200,11 @@ class Category {
 
   factory Category.fromJson(Map<String, dynamic> json) {
     return Category(
-      id: json['_id'] as String,
-      name: json['name'] as String,
-      type: json['type'] as String,
-      color: json['color'] as String,
-      icon: json['icon'] as String,
+      id: json['_id']?.toString() ?? json['id']?.toString() ?? '',
+      name: json['name']?.toString() ?? 'Sin nombre',
+      type: json['type']?.toString() ?? 'expense',
+      color: json['color']?.toString() ?? '#999999',
+      icon: json['icon']?.toString() ?? 'category',
     );
   }
 

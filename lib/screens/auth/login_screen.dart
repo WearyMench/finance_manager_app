@@ -57,6 +57,10 @@ class _LoginScreenState extends State<LoginScreen>
     if (!_formKey.currentState!.validate()) return;
 
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+    // Limpiar errores previos
+    authProvider.clearError();
+
     final success = await authProvider.login(
       _emailController.text.trim(),
       _passwordController.text,
@@ -64,11 +68,27 @@ class _LoginScreenState extends State<LoginScreen>
 
     if (success && mounted) {
       // Navigation will be handled by the main app wrapper
-    } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(authProvider.error ?? 'Error al iniciar sesión'),
+          content: const Text('¡Bienvenido!'),
+          backgroundColor: AppColors.getSuccessColor(context),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    } else if (mounted && authProvider.error != null) {
+      // Mostrar error específico
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(authProvider.error!),
           backgroundColor: AppColors.getDangerColor(context),
+          duration: const Duration(seconds: 4),
+          action: SnackBarAction(
+            label: 'Cerrar',
+            textColor: Colors.white,
+            onPressed: () {
+              ScaffoldMessenger.of(context).hideCurrentSnackBar();
+            },
+          ),
         ),
       );
     }
@@ -177,12 +197,21 @@ class _LoginScreenState extends State<LoginScreen>
                                   }
                                   if (!RegExp(
                                     r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
-                                  ).hasMatch(value)) {
+                                  ).hasMatch(value.trim())) {
                                     return 'Por favor ingresa un email válido';
                                   }
                                   return null;
                                 },
                                 textInputAction: TextInputAction.next,
+                                onChanged: (value) {
+                                  // Limpiar errores cuando el usuario empiece a escribir
+                                  if (value.isNotEmpty) {
+                                    Provider.of<AuthProvider>(
+                                      context,
+                                      listen: false,
+                                    ).clearError();
+                                  }
+                                },
                               ),
                               const SizedBox(height: 16),
 
@@ -223,47 +252,111 @@ class _LoginScreenState extends State<LoginScreen>
                                 },
                                 textInputAction: TextInputAction.done,
                                 onFieldSubmitted: (_) => _login(),
+                                onChanged: (value) {
+                                  // Limpiar errores cuando el usuario empiece a escribir
+                                  if (value.isNotEmpty) {
+                                    Provider.of<AuthProvider>(
+                                      context,
+                                      listen: false,
+                                    ).clearError();
+                                  }
+                                },
                               ),
                               const SizedBox(height: 24),
 
                               // Login button
                               Consumer<AuthProvider>(
                                 builder: (context, authProvider, child) {
-                                  return ElevatedButton(
-                                    onPressed: authProvider.isLoading
-                                        ? null
-                                        : _login,
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor:
-                                          AppColors.getPrimaryColor(context),
-                                      foregroundColor: Colors.white,
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 16,
-                                      ),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      elevation: 2,
-                                    ),
-                                    child: authProvider.isLoading
-                                        ? const SizedBox(
-                                            height: 20,
-                                            width: 20,
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 2,
-                                              valueColor:
-                                                  AlwaysStoppedAnimation<Color>(
-                                                    Colors.white,
-                                                  ),
-                                            ),
-                                          )
-                                        : const Text(
-                                            'Iniciar Sesión',
-                                            style: TextStyle(
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.w600,
+                                  return Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
+                                    children: [
+                                      ElevatedButton(
+                                        onPressed: authProvider.isLoading
+                                            ? null
+                                            : _login,
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor:
+                                              AppColors.getPrimaryColor(
+                                                context,
+                                              ),
+                                          foregroundColor: Colors.white,
+                                          padding: const EdgeInsets.symmetric(
+                                            vertical: 16,
+                                          ),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              12,
                                             ),
                                           ),
+                                          elevation: 2,
+                                        ),
+                                        child: authProvider.isLoading
+                                            ? const SizedBox(
+                                                height: 20,
+                                                width: 20,
+                                                child: CircularProgressIndicator(
+                                                  strokeWidth: 2,
+                                                  valueColor:
+                                                      AlwaysStoppedAnimation<
+                                                        Color
+                                                      >(Colors.white),
+                                                ),
+                                              )
+                                            : const Text(
+                                                'Iniciar Sesión',
+                                                style: TextStyle(
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                      ),
+
+                                      // Mostrar error si existe
+                                      if (authProvider.error != null) ...[
+                                        const SizedBox(height: 12),
+                                        Container(
+                                          padding: const EdgeInsets.all(12),
+                                          decoration: BoxDecoration(
+                                            color: AppColors.getDangerColor(
+                                              context,
+                                            ).withOpacity(0.1),
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
+                                            border: Border.all(
+                                              color: AppColors.getDangerColor(
+                                                context,
+                                              ).withOpacity(0.3),
+                                            ),
+                                          ),
+                                          child: Row(
+                                            children: [
+                                              Icon(
+                                                Icons.error_outline,
+                                                color: AppColors.getDangerColor(
+                                                  context,
+                                                ),
+                                                size: 20,
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Expanded(
+                                                child: Text(
+                                                  authProvider.error!,
+                                                  style: TextStyle(
+                                                    color:
+                                                        AppColors.getDangerColor(
+                                                          context,
+                                                        ),
+                                                    fontSize: 14,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ],
                                   );
                                 },
                               ),

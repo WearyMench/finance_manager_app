@@ -39,17 +39,59 @@ class AuthProvider with ChangeNotifier {
     _error = null;
 
     try {
-      final response = await _apiService.login(email, password);
+      // Validación básica antes de hacer la petición
+      if (email.trim().isEmpty) {
+        _error = 'El email es requerido';
+        return false;
+      }
+      if (password.isEmpty) {
+        _error = 'La contraseña es requerida';
+        return false;
+      }
+      if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email.trim())) {
+        _error = 'Por favor ingresa un email válido';
+        return false;
+      }
+
+      final response = await _apiService.login(email.trim(), password);
       if (response.success && response.data != null) {
         _user = response.data!.user;
+        _error = null;
         notifyListeners();
         return true;
       } else {
-        _error = response.message ?? 'Error al iniciar sesión';
+        // Manejo específico de errores del servidor
+        if (response.message != null) {
+          if (response.message!.contains('Invalid credentials') ||
+              response.message!.contains('Credenciales inválidas')) {
+            _error = 'Email o contraseña incorrectos';
+          } else if (response.message!.contains('User not found') ||
+              response.message!.contains('Usuario no encontrado')) {
+            _error = 'No existe una cuenta con este email';
+          } else if (response.message!.contains('Account disabled') ||
+              response.message!.contains('Cuenta deshabilitada')) {
+            _error = 'Tu cuenta ha sido deshabilitada. Contacta al soporte';
+          } else {
+            _error = response.message!;
+          }
+        } else {
+          _error = 'Error al iniciar sesión. Inténtalo nuevamente';
+        }
         return false;
       }
     } catch (e) {
-      _error = 'Error de conexión: $e';
+      // Manejo específico de errores de conexión
+      if (e.toString().contains('Failed host lookup') ||
+          e.toString().contains('no address associated with hostname')) {
+        _error = 'Sin conexión a internet. Verifica tu red';
+      } else if (e.toString().contains('Connection refused') ||
+          e.toString().contains('Connection timed out')) {
+        _error = 'Servidor no disponible. Inténtalo más tarde';
+      } else if (e.toString().contains('TimeoutException')) {
+        _error = 'La conexión tardó demasiado. Inténtalo nuevamente';
+      } else {
+        _error = 'Error de conexión. Verifica tu internet';
+      }
       return false;
     } finally {
       _setLoading(false);
@@ -185,7 +227,7 @@ class AuthProvider with ChangeNotifier {
     _error = null;
 
     try {
-      final response = await _apiService.deleteAccount(password: password);
+      final response = await _apiService.deleteUserAccount(password: password);
 
       if (response.success) {
         // Clear local data

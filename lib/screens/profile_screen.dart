@@ -206,7 +206,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.getBackgroundColor(context),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -225,7 +225,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ],
         ),
-        backgroundColor: AppTheme.getPrimaryColor(context),
+        backgroundColor: Theme.of(context).primaryColor,
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
@@ -258,7 +258,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 label: const Text('Editar'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.white,
-                  foregroundColor: AppTheme.getPrimaryColor(context),
+                  foregroundColor: Theme.of(context).primaryColor,
                   elevation: 0,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
@@ -282,36 +282,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   margin: const EdgeInsets.only(bottom: 16),
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: AppTheme.getSuccessColor(context).withOpacity(0.1),
+                    color: Colors.green.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: AppTheme.getSuccessColor(context).withOpacity(0.3),
-                    ),
+                    border: Border.all(color: Colors.green.withOpacity(0.3)),
                   ),
                   child: Row(
                     children: [
-                      Icon(
-                        Icons.check_circle,
-                        color: AppTheme.getSuccessColor(context),
-                        size: 20,
-                      ),
+                      Icon(Icons.check_circle, color: Colors.green, size: 20),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
                           _successMessage!,
                           style: TextStyle(
-                            color: AppTheme.getSuccessColor(context),
+                            color: Colors.green,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
                       ),
                       IconButton(
                         onPressed: _clearMessages,
-                        icon: Icon(
-                          Icons.close,
-                          color: AppTheme.getSuccessColor(context),
-                          size: 18,
-                        ),
+                        icon: Icon(Icons.close, color: Colors.green, size: 18),
                       ),
                     ],
                   ),
@@ -324,36 +314,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   margin: const EdgeInsets.only(bottom: 16),
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: AppTheme.getErrorColor(context).withOpacity(0.1),
+                    color: Colors.red.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: AppTheme.getErrorColor(context).withOpacity(0.3),
-                    ),
+                    border: Border.all(color: Colors.red.withOpacity(0.3)),
                   ),
                   child: Row(
                     children: [
-                      Icon(
-                        Icons.error,
-                        color: AppTheme.getErrorColor(context),
-                        size: 20,
-                      ),
+                      Icon(Icons.error, color: Colors.red, size: 20),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
                           _errorMessage!,
                           style: TextStyle(
-                            color: AppTheme.getErrorColor(context),
+                            color: Colors.red,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
                       ),
                       IconButton(
                         onPressed: _clearMessages,
-                        icon: Icon(
-                          Icons.close,
-                          color: AppTheme.getErrorColor(context),
-                          size: 18,
-                        ),
+                        icon: Icon(Icons.close, color: Colors.red, size: 18),
                       ),
                     ],
                   ),
@@ -368,14 +348,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                     colors: [
-                      AppTheme.getPrimaryColor(context),
-                      AppTheme.getPrimaryColor(context).withOpacity(0.8),
+                      Theme.of(context).primaryColor,
+                      Theme.of(context).primaryColor.withOpacity(0.8),
                     ],
                   ),
                   borderRadius: BorderRadius.circular(20),
                   boxShadow: [
                     BoxShadow(
-                      color: AppTheme.getPrimaryColor(context).withOpacity(0.3),
+                      color: Theme.of(context).primaryColor.withOpacity(0.3),
                       blurRadius: 20,
                       offset: const Offset(0, 8),
                     ),
@@ -454,7 +434,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: AppTheme.getSurfaceColor(context),
+                  color: Theme.of(context).cardColor,
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
@@ -479,7 +459,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                           child: Icon(
                             Icons.person,
-                            color: AppTheme.getPrimaryColor(context),
+                            color: Theme.of(context).primaryColor,
                             size: 20,
                           ),
                         ),
@@ -487,7 +467,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         Text(
                           'Información Personal',
                           style: TextStyle(
-                            color: AppTheme.getTextPrimaryColor(context),
+                            color:
+                                Theme.of(context).textTheme.bodyLarge?.color ??
+                                Colors.black87,
                             fontSize: 18,
                             fontWeight: FontWeight.w600,
                           ),
@@ -504,31 +486,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         labelText: 'Nombre',
                         prefixIcon: Icon(
                           Icons.person_outline,
-                          color: AppTheme.getPrimaryColor(context),
+                          color: Theme.of(context).primaryColor,
                         ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide(
-                            color: AppTheme.getBorderColor(context),
+                            color: Theme.of(context).dividerColor,
                           ),
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide(
-                            color: AppTheme.getBorderColor(context),
+                            color: Theme.of(context).dividerColor,
                           ),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide(
-                            color: AppTheme.getPrimaryColor(context),
+                            color: Theme.of(context).primaryColor,
                             width: 2,
                           ),
                         ),
                         filled: true,
                         fillColor: _isEditing
-                            ? AppTheme.getBackgroundColor(context)
-                            : AppTheme.getDividerColor(context),
+                            ? Theme.of(context).scaffoldBackgroundColor
+                            : Theme.of(context).dividerColor.withOpacity(0.3),
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -540,31 +522,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         labelText: 'Email',
                         prefixIcon: Icon(
                           Icons.email_outlined,
-                          color: AppTheme.getPrimaryColor(context),
+                          color: Theme.of(context).primaryColor,
                         ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide(
-                            color: AppTheme.getBorderColor(context),
+                            color: Theme.of(context).dividerColor,
                           ),
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide(
-                            color: AppTheme.getBorderColor(context),
+                            color: Theme.of(context).dividerColor,
                           ),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide(
-                            color: AppTheme.getPrimaryColor(context),
+                            color: Theme.of(context).primaryColor,
                             width: 2,
                           ),
                         ),
                         filled: true,
                         fillColor: _isEditing
-                            ? AppTheme.getBackgroundColor(context)
-                            : AppTheme.getDividerColor(context),
+                            ? Theme.of(context).scaffoldBackgroundColor
+                            : Theme.of(context).dividerColor.withOpacity(0.3),
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -576,31 +558,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         labelText: 'Moneda',
                         prefixIcon: Icon(
                           Icons.attach_money,
-                          color: AppTheme.getPrimaryColor(context),
+                          color: Theme.of(context).primaryColor,
                         ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide(
-                            color: AppTheme.getBorderColor(context),
+                            color: Theme.of(context).dividerColor,
                           ),
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide(
-                            color: AppTheme.getBorderColor(context),
+                            color: Theme.of(context).dividerColor,
                           ),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide(
-                            color: AppTheme.getPrimaryColor(context),
+                            color: Theme.of(context).primaryColor,
                             width: 2,
                           ),
                         ),
                         filled: true,
                         fillColor: _isEditing
-                            ? AppTheme.getBackgroundColor(context)
-                            : AppTheme.getDividerColor(context),
+                            ? Theme.of(context).scaffoldBackgroundColor
+                            : Theme.of(context).dividerColor.withOpacity(0.3),
                       ),
                       items: _currencies.entries.map((entry) {
                         return DropdownMenuItem<String>(
@@ -608,7 +590,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           child: Text(
                             entry.value,
                             style: TextStyle(
-                              color: AppTheme.getTextPrimaryColor(context),
+                              color:
+                                  Theme.of(
+                                    context,
+                                  ).textTheme.bodyLarge?.color ??
+                                  Colors.black87,
                             ),
                           ),
                         );
@@ -630,7 +616,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         child: ElevatedButton(
                           onPressed: _isLoading ? null : _updateProfile,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: AppTheme.getPrimaryColor(context),
+                            backgroundColor: Theme.of(context).primaryColor,
                             foregroundColor: Colors.white,
                             elevation: 0,
                             shape: RoundedRectangleBorder(
@@ -662,7 +648,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: AppTheme.getSurfaceColor(context),
+                  color: Theme.of(context).cardColor,
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
@@ -687,7 +673,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                           child: Icon(
                             Icons.lock,
-                            color: AppTheme.getWarningColor(context),
+                            color: Colors.orange,
                             size: 20,
                           ),
                         ),
@@ -695,7 +681,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         Text(
                           'Cambiar Contraseña',
                           style: TextStyle(
-                            color: AppTheme.getTextPrimaryColor(context),
+                            color:
+                                Theme.of(context).textTheme.bodyLarge?.color ??
+                                Colors.black87,
                             fontSize: 18,
                             fontWeight: FontWeight.w600,
                           ),
@@ -717,10 +705,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           icon: const Icon(Icons.edit, size: 18),
                           label: const Text('Cambiar Contraseña'),
                           style: OutlinedButton.styleFrom(
-                            foregroundColor: AppTheme.getWarningColor(context),
-                            side: BorderSide(
-                              color: AppTheme.getWarningColor(context),
-                            ),
+                            foregroundColor: Colors.orange,
+                            side: BorderSide(color: Colors.orange),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
@@ -737,29 +723,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           labelText: 'Contraseña Actual',
                           prefixIcon: Icon(
                             Icons.lock_outline,
-                            color: AppTheme.getPrimaryColor(context),
+                            color: Theme.of(context).primaryColor,
                           ),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide(
-                              color: AppTheme.getBorderColor(context),
+                              color: Theme.of(context).dividerColor,
                             ),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide(
-                              color: AppTheme.getBorderColor(context),
+                              color: Theme.of(context).dividerColor,
                             ),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide(
-                              color: AppTheme.getPrimaryColor(context),
+                              color: Theme.of(context).primaryColor,
                               width: 2,
                             ),
                           ),
                           filled: true,
-                          fillColor: AppTheme.getBackgroundColor(context),
+                          fillColor: Theme.of(context).scaffoldBackgroundColor,
                         ),
                       ),
                       const SizedBox(height: 16),
@@ -772,29 +758,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           labelText: 'Nueva Contraseña',
                           prefixIcon: Icon(
                             Icons.lock_outline,
-                            color: AppTheme.getPrimaryColor(context),
+                            color: Theme.of(context).primaryColor,
                           ),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide(
-                              color: AppTheme.getBorderColor(context),
+                              color: Theme.of(context).dividerColor,
                             ),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide(
-                              color: AppTheme.getBorderColor(context),
+                              color: Theme.of(context).dividerColor,
                             ),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide(
-                              color: AppTheme.getPrimaryColor(context),
+                              color: Theme.of(context).primaryColor,
                               width: 2,
                             ),
                           ),
                           filled: true,
-                          fillColor: AppTheme.getBackgroundColor(context),
+                          fillColor: Theme.of(context).scaffoldBackgroundColor,
                         ),
                       ),
                       const SizedBox(height: 16),
@@ -807,29 +793,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           labelText: 'Confirmar Nueva Contraseña',
                           prefixIcon: Icon(
                             Icons.lock_outline,
-                            color: AppTheme.getPrimaryColor(context),
+                            color: Theme.of(context).primaryColor,
                           ),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide(
-                              color: AppTheme.getBorderColor(context),
+                              color: Theme.of(context).dividerColor,
                             ),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide(
-                              color: AppTheme.getBorderColor(context),
+                              color: Theme.of(context).dividerColor,
                             ),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide(
-                              color: AppTheme.getPrimaryColor(context),
+                              color: Theme.of(context).primaryColor,
                               width: 2,
                             ),
                           ),
                           filled: true,
-                          fillColor: AppTheme.getBackgroundColor(context),
+                          fillColor: Theme.of(context).scaffoldBackgroundColor,
                         ),
                       ),
                       const SizedBox(height: 20),
@@ -855,7 +841,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   context,
                                 ),
                                 side: BorderSide(
-                                  color: AppTheme.getBorderColor(context),
+                                  color: Theme.of(context).dividerColor,
                                 ),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),

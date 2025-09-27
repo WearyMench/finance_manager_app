@@ -204,31 +204,38 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: AppTheme.getSurfaceColor(context),
+        backgroundColor: Theme.of(context).cardColor,
         title: Text(
           'Eliminar Categoría',
           style: TextStyle(
-            color: AppTheme.getTextPrimaryColor(context),
+            color:
+                Theme.of(context).textTheme.bodyLarge?.color ?? Colors.black87,
             fontWeight: FontWeight.w600,
           ),
         ),
         content: Text(
           '¿Estás seguro de que quieres eliminar esta categoría?',
-          style: TextStyle(color: AppTheme.getTextSecondaryColor(context)),
+          style: TextStyle(
+            color:
+                Theme.of(context).textTheme.bodyMedium?.color ??
+                Colors.grey[600],
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
             child: Text(
               'Cancelar',
-              style: TextStyle(color: AppTheme.getTextSecondaryColor(context)),
+              style: TextStyle(
+                color:
+                    Theme.of(context).textTheme.bodyMedium?.color ??
+                    Colors.grey[600],
+              ),
             ),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            style: TextButton.styleFrom(
-              foregroundColor: AppTheme.getErrorColor(context),
-            ),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
             child: const Text('Eliminar'),
           ),
         ],
@@ -312,7 +319,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.getBackgroundColor(context),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -331,7 +338,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
             ),
           ],
         ),
-        backgroundColor: AppTheme.getPrimaryColor(context),
+        backgroundColor: Theme.of(context).primaryColor,
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
@@ -364,7 +371,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                 label: const Text('Agregar'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.white,
-                  foregroundColor: AppTheme.getPrimaryColor(context),
+                  foregroundColor: Theme.of(context).primaryColor,
                   elevation: 0,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
@@ -391,36 +398,26 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                 margin: const EdgeInsets.all(16),
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: AppTheme.getSuccessColor(context).withOpacity(0.1),
+                  color: Colors.green.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: AppTheme.getSuccessColor(context).withOpacity(0.3),
-                  ),
+                  border: Border.all(color: Colors.green.withOpacity(0.3)),
                 ),
                 child: Row(
                   children: [
-                    Icon(
-                      Icons.check_circle,
-                      color: AppTheme.getSuccessColor(context),
-                      size: 20,
-                    ),
+                    Icon(Icons.check_circle, color: Colors.green, size: 20),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
                         _successMessage!,
                         style: TextStyle(
-                          color: AppTheme.getSuccessColor(context),
+                          color: Colors.green,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
                     ),
                     IconButton(
                       onPressed: _clearMessages,
-                      icon: Icon(
-                        Icons.close,
-                        color: AppTheme.getSuccessColor(context),
-                        size: 18,
-                      ),
+                      icon: Icon(Icons.close, color: Colors.green, size: 18),
                     ),
                   ],
                 ),
@@ -433,36 +430,26 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                 margin: const EdgeInsets.all(16),
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: AppTheme.getErrorColor(context).withOpacity(0.1),
+                  color: Colors.red.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: AppTheme.getErrorColor(context).withOpacity(0.3),
-                  ),
+                  border: Border.all(color: Colors.red.withOpacity(0.3)),
                 ),
                 child: Row(
                   children: [
-                    Icon(
-                      Icons.error,
-                      color: AppTheme.getErrorColor(context),
-                      size: 20,
-                    ),
+                    Icon(Icons.error, color: Colors.red, size: 20),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
                         _errorMessage!,
                         style: TextStyle(
-                          color: AppTheme.getErrorColor(context),
+                          color: Colors.red,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
                     ),
                     IconButton(
                       onPressed: _clearMessages,
-                      icon: Icon(
-                        Icons.close,
-                        color: AppTheme.getErrorColor(context),
-                        size: 18,
-                      ),
+                      icon: Icon(Icons.close, color: Colors.red, size: 18),
                     ),
                   ],
                 ),
@@ -474,7 +461,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                 margin: const EdgeInsets.all(16),
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: AppTheme.getSurfaceColor(context),
+                  color: Theme.of(context).cardColor,
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
@@ -499,7 +486,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                           ),
                           child: Icon(
                             _isAdding ? Icons.add_circle : Icons.edit,
-                            color: AppTheme.getPrimaryColor(context),
+                            color: Theme.of(context).primaryColor,
                             size: 20,
                           ),
                         ),
@@ -509,7 +496,9 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                               ? 'Agregar Nueva Categoría'
                               : 'Editar Categoría',
                           style: TextStyle(
-                            color: AppTheme.getTextPrimaryColor(context),
+                            color:
+                                Theme.of(context).textTheme.bodyLarge?.color ??
+                                Colors.black87,
                             fontSize: 18,
                             fontWeight: FontWeight.w600,
                           ),
@@ -528,29 +517,29 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                         hintText: 'Ej: Comida, Transporte, etc.',
                         prefixIcon: Icon(
                           Icons.category,
-                          color: AppTheme.getPrimaryColor(context),
+                          color: Theme.of(context).primaryColor,
                         ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide(
-                            color: AppTheme.getBorderColor(context),
+                            color: Theme.of(context).dividerColor,
                           ),
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide(
-                            color: AppTheme.getBorderColor(context),
+                            color: Theme.of(context).dividerColor,
                           ),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide(
-                            color: AppTheme.getPrimaryColor(context),
+                            color: Theme.of(context).primaryColor,
                             width: 2,
                           ),
                         ),
                         filled: true,
-                        fillColor: AppTheme.getBackgroundColor(context),
+                        fillColor: Theme.of(context).scaffoldBackgroundColor,
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -562,29 +551,29 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                         labelText: 'Tipo de Categoría',
                         prefixIcon: Icon(
                           Icons.type_specimen,
-                          color: AppTheme.getPrimaryColor(context),
+                          color: Theme.of(context).primaryColor,
                         ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide(
-                            color: AppTheme.getBorderColor(context),
+                            color: Theme.of(context).dividerColor,
                           ),
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide(
-                            color: AppTheme.getBorderColor(context),
+                            color: Theme.of(context).dividerColor,
                           ),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide(
-                            color: AppTheme.getPrimaryColor(context),
+                            color: Theme.of(context).primaryColor,
                             width: 2,
                           ),
                         ),
                         filled: true,
-                        fillColor: AppTheme.getBackgroundColor(context),
+                        fillColor: Theme.of(context).scaffoldBackgroundColor,
                       ),
                       items: const [
                         DropdownMenuItem(
@@ -608,7 +597,9 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                     Text(
                       'Color',
                       style: TextStyle(
-                        color: AppTheme.getTextPrimaryColor(context),
+                        color:
+                            Theme.of(context).textTheme.bodyLarge?.color ??
+                            Colors.black87,
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
                       ),
@@ -636,7 +627,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                               shape: BoxShape.circle,
                               border: Border.all(
                                 color: isSelected
-                                    ? AppTheme.getPrimaryColor(context)
+                                    ? Theme.of(context).primaryColor
                                     : Colors.transparent,
                                 width: 3,
                               ),
@@ -658,7 +649,9 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                     Text(
                       'Icono',
                       style: TextStyle(
-                        color: AppTheme.getTextPrimaryColor(context),
+                        color:
+                            Theme.of(context).textTheme.bodyLarge?.color ??
+                            Colors.black87,
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
                       ),
@@ -680,13 +673,15 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                             height: 48,
                             decoration: BoxDecoration(
                               color: isSelected
-                                  ? AppTheme.getPrimaryColor(context)
-                                  : AppTheme.getDividerColor(context),
+                                  ? Theme.of(context).primaryColor
+                                  : Theme.of(
+                                      context,
+                                    ).dividerColor.withOpacity(0.3),
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
                                 color: isSelected
-                                    ? AppTheme.getPrimaryColor(context)
-                                    : AppTheme.getBorderColor(context),
+                                    ? Theme.of(context).primaryColor
+                                    : Theme.of(context).dividerColor,
                                 width: 2,
                               ),
                             ),
@@ -694,7 +689,10 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                               _getIconData(icon),
                               color: isSelected
                                   ? Colors.white
-                                  : AppTheme.getTextSecondaryColor(context),
+                                  : Theme.of(
+                                          context,
+                                        ).textTheme.bodyMedium?.color ??
+                                        Colors.grey[600],
                               size: 24,
                             ),
                           ),
@@ -714,7 +712,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                                 context,
                               ),
                               side: BorderSide(
-                                color: AppTheme.getBorderColor(context),
+                                color: Theme.of(context).dividerColor,
                               ),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
@@ -774,14 +772,18 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                         children: [
                           CircularProgressIndicator(
                             valueColor: AlwaysStoppedAnimation<Color>(
-                              AppTheme.getPrimaryColor(context),
+                              Theme.of(context).primaryColor,
                             ),
                           ),
                           const SizedBox(height: 16),
                           Text(
                             'Cargando categorías...',
                             style: TextStyle(
-                              color: AppTheme.getTextSecondaryColor(context),
+                              color:
+                                  Theme.of(
+                                    context,
+                                  ).textTheme.bodyMedium?.color ??
+                                  Colors.grey[600],
                               fontSize: 16,
                             ),
                           ),
@@ -807,13 +809,19 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                           Icon(
                             Icons.category_outlined,
                             size: 64,
-                            color: AppTheme.getTextSecondaryColor(context),
+                            color:
+                                Theme.of(context).textTheme.bodyMedium?.color ??
+                                Colors.grey[600],
                           ),
                           const SizedBox(height: 16),
                           Text(
                             'No hay categorías',
                             style: TextStyle(
-                              color: AppTheme.getTextPrimaryColor(context),
+                              color:
+                                  Theme.of(
+                                    context,
+                                  ).textTheme.bodyLarge?.color ??
+                                  Colors.black87,
                               fontSize: 18,
                               fontWeight: FontWeight.w600,
                             ),
@@ -822,7 +830,11 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                           Text(
                             'Agrega tu primera categoría para comenzar',
                             style: TextStyle(
-                              color: AppTheme.getTextSecondaryColor(context),
+                              color:
+                                  Theme.of(
+                                    context,
+                                  ).textTheme.bodyMedium?.color ??
+                                  Colors.grey[600],
                               fontSize: 14,
                             ),
                           ),
@@ -850,7 +862,8 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                             context,
                             'Gastos',
                             Icons.trending_down,
-                            AppTheme.getTextSecondaryColor(context),
+                            (Theme.of(context).textTheme.bodyMedium?.color ??
+                                Colors.grey[600])!,
                             expenseCategories,
                           ),
                           const SizedBox(height: 24),
@@ -862,7 +875,8 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                             context,
                             'Ingresos',
                             Icons.trending_up,
-                            AppTheme.getTextSecondaryColor(context),
+                            (Theme.of(context).textTheme.bodyMedium?.color ??
+                                Colors.grey[600])!,
                             incomeCategories,
                           ),
                         ],
@@ -977,9 +991,9 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.getSurfaceColor(context),
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.getBorderColor(context), width: 1),
+        border: Border.all(color: Theme.of(context).dividerColor, width: 1),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.03),
@@ -1018,7 +1032,9 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                 Text(
                   category.name,
                   style: TextStyle(
-                    color: AppTheme.getTextPrimaryColor(context),
+                    color:
+                        Theme.of(context).textTheme.bodyLarge?.color ??
+                        Colors.black87,
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
                   ),
@@ -1027,7 +1043,9 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                 Text(
                   category.type == 'income' ? 'Ingreso' : 'Gasto',
                   style: TextStyle(
-                    color: AppTheme.getTextSecondaryColor(context),
+                    color:
+                        Theme.of(context).textTheme.bodyMedium?.color ??
+                        Colors.grey[600],
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
                   ),
@@ -1044,7 +1062,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                 onPressed: () => _editCategory(category),
                 icon: Icon(
                   Icons.edit_outlined,
-                  color: AppTheme.getPrimaryColor(context),
+                  color: Theme.of(context).primaryColor,
                   size: 18,
                 ),
                 tooltip: 'Editar',
@@ -1053,11 +1071,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
               ),
               IconButton(
                 onPressed: () => _deleteCategory(category.id),
-                icon: Icon(
-                  Icons.delete_outline,
-                  color: AppTheme.getErrorColor(context),
-                  size: 18,
-                ),
+                icon: Icon(Icons.delete_outline, color: Colors.red, size: 18),
                 tooltip: 'Eliminar',
                 constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                 padding: EdgeInsets.zero,

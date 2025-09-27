@@ -196,31 +196,38 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: AppTheme.getSurfaceColor(context),
+        backgroundColor: Theme.of(context).cardColor,
         title: Text(
           'Eliminar Presupuesto',
           style: TextStyle(
-            color: AppTheme.getTextPrimaryColor(context),
+            color:
+                Theme.of(context).textTheme.bodyLarge?.color ?? Colors.black87,
             fontWeight: FontWeight.w600,
           ),
         ),
         content: Text(
           '¿Estás seguro de que quieres eliminar este presupuesto?',
-          style: TextStyle(color: AppTheme.getTextSecondaryColor(context)),
+          style: TextStyle(
+            color:
+                Theme.of(context).textTheme.bodyMedium?.color ??
+                Colors.grey[600],
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
             child: Text(
               'Cancelar',
-              style: TextStyle(color: AppTheme.getTextSecondaryColor(context)),
+              style: TextStyle(
+                color:
+                    Theme.of(context).textTheme.bodyMedium?.color ??
+                    Colors.grey[600],
+              ),
             ),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            style: TextButton.styleFrom(
-              foregroundColor: AppTheme.getErrorColor(context),
-            ),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
             child: const Text('Eliminar'),
           ),
         ],
@@ -301,7 +308,7 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.getBackgroundColor(context),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -320,7 +327,7 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
             ),
           ],
         ),
-        backgroundColor: AppTheme.getPrimaryColor(context),
+        backgroundColor: Theme.of(context).primaryColor,
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
@@ -353,7 +360,7 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
                 label: const Text('Agregar'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.white,
-                  foregroundColor: AppTheme.getPrimaryColor(context),
+                  foregroundColor: Theme.of(context).primaryColor,
                   elevation: 0,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
@@ -379,36 +386,26 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
                 margin: const EdgeInsets.all(16),
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: AppTheme.getSuccessColor(context).withOpacity(0.1),
+                  color: Colors.green.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: AppTheme.getSuccessColor(context).withOpacity(0.3),
-                  ),
+                  border: Border.all(color: Colors.green.withOpacity(0.3)),
                 ),
                 child: Row(
                   children: [
-                    Icon(
-                      Icons.check_circle,
-                      color: AppTheme.getSuccessColor(context),
-                      size: 20,
-                    ),
+                    Icon(Icons.check_circle, color: Colors.green, size: 20),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
                         _successMessage!,
                         style: TextStyle(
-                          color: AppTheme.getSuccessColor(context),
+                          color: Colors.green,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
                     ),
                     IconButton(
                       onPressed: _clearMessages,
-                      icon: Icon(
-                        Icons.close,
-                        color: AppTheme.getSuccessColor(context),
-                        size: 18,
-                      ),
+                      icon: Icon(Icons.close, color: Colors.green, size: 18),
                     ),
                   ],
                 ),
@@ -421,36 +418,26 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
                 margin: const EdgeInsets.all(16),
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: AppTheme.getErrorColor(context).withOpacity(0.1),
+                  color: Colors.red.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: AppTheme.getErrorColor(context).withOpacity(0.3),
-                  ),
+                  border: Border.all(color: Colors.red.withOpacity(0.3)),
                 ),
                 child: Row(
                   children: [
-                    Icon(
-                      Icons.error,
-                      color: AppTheme.getErrorColor(context),
-                      size: 20,
-                    ),
+                    Icon(Icons.error, color: Colors.red, size: 20),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
                         _errorMessage!,
                         style: TextStyle(
-                          color: AppTheme.getErrorColor(context),
+                          color: Colors.red,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
                     ),
                     IconButton(
                       onPressed: _clearMessages,
-                      icon: Icon(
-                        Icons.close,
-                        color: AppTheme.getErrorColor(context),
-                        size: 18,
-                      ),
+                      icon: Icon(Icons.close, color: Colors.red, size: 18),
                     ),
                   ],
                 ),
@@ -462,7 +449,7 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
                 margin: const EdgeInsets.all(16),
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: AppTheme.getSurfaceColor(context),
+                  color: Theme.of(context).cardColor,
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
@@ -487,7 +474,7 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
                           ),
                           child: Icon(
                             _isAdding ? Icons.add_circle : Icons.edit,
-                            color: AppTheme.getPrimaryColor(context),
+                            color: Theme.of(context).primaryColor,
                             size: 20,
                           ),
                         ),
@@ -497,7 +484,9 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
                               ? 'Agregar Nuevo Presupuesto'
                               : 'Editar Presupuesto',
                           style: TextStyle(
-                            color: AppTheme.getTextPrimaryColor(context),
+                            color:
+                                Theme.of(context).textTheme.bodyLarge?.color ??
+                                Colors.black87,
                             fontSize: 18,
                             fontWeight: FontWeight.w600,
                           ),
@@ -522,29 +511,31 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
                             hintText: 'Selecciona una categoría',
                             prefixIcon: Icon(
                               Icons.category,
-                              color: AppTheme.getPrimaryColor(context),
+                              color: Theme.of(context).primaryColor,
                             ),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
                               borderSide: BorderSide(
-                                color: AppTheme.getBorderColor(context),
+                                color: Theme.of(context).dividerColor,
                               ),
                             ),
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
                               borderSide: BorderSide(
-                                color: AppTheme.getBorderColor(context),
+                                color: Theme.of(context).dividerColor,
                               ),
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
                               borderSide: BorderSide(
-                                color: AppTheme.getPrimaryColor(context),
+                                color: Theme.of(context).primaryColor,
                                 width: 2,
                               ),
                             ),
                             filled: true,
-                            fillColor: AppTheme.getBackgroundColor(context),
+                            fillColor: Theme.of(
+                              context,
+                            ).scaffoldBackgroundColor,
                           ),
                           items: expenseCategories.map((category) {
                             return DropdownMenuItem<String>(
@@ -597,30 +588,30 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
                         hintText: '0.00',
                         prefixIcon: Icon(
                           Icons.attach_money,
-                          color: AppTheme.getPrimaryColor(context),
+                          color: Theme.of(context).primaryColor,
                         ),
                         suffixText: 'RD\$',
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide(
-                            color: AppTheme.getBorderColor(context),
+                            color: Theme.of(context).dividerColor,
                           ),
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide(
-                            color: AppTheme.getBorderColor(context),
+                            color: Theme.of(context).dividerColor,
                           ),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide(
-                            color: AppTheme.getPrimaryColor(context),
+                            color: Theme.of(context).primaryColor,
                             width: 2,
                           ),
                         ),
                         filled: true,
-                        fillColor: AppTheme.getBackgroundColor(context),
+                        fillColor: Theme.of(context).scaffoldBackgroundColor,
                       ),
                     ),
                     const SizedBox(height: 24),
@@ -636,7 +627,7 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
                                 context,
                               ),
                               side: BorderSide(
-                                color: AppTheme.getBorderColor(context),
+                                color: Theme.of(context).dividerColor,
                               ),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
@@ -696,14 +687,18 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
                         children: [
                           CircularProgressIndicator(
                             valueColor: AlwaysStoppedAnimation<Color>(
-                              AppTheme.getPrimaryColor(context),
+                              Theme.of(context).primaryColor,
                             ),
                           ),
                           const SizedBox(height: 16),
                           Text(
                             'Cargando presupuestos...',
                             style: TextStyle(
-                              color: AppTheme.getTextSecondaryColor(context),
+                              color:
+                                  Theme.of(
+                                    context,
+                                  ).textTheme.bodyMedium?.color ??
+                                  Colors.grey[600],
                               fontSize: 16,
                             ),
                           ),
@@ -729,13 +724,19 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
                           Icon(
                             Icons.account_balance_wallet_outlined,
                             size: 64,
-                            color: AppTheme.getTextSecondaryColor(context),
+                            color:
+                                Theme.of(context).textTheme.bodyMedium?.color ??
+                                Colors.grey[600],
                           ),
                           const SizedBox(height: 16),
                           Text(
                             'No hay presupuestos',
                             style: TextStyle(
-                              color: AppTheme.getTextPrimaryColor(context),
+                              color:
+                                  Theme.of(
+                                    context,
+                                  ).textTheme.bodyLarge?.color ??
+                                  Colors.black87,
                               fontSize: 18,
                               fontWeight: FontWeight.w600,
                             ),
@@ -744,7 +745,11 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
                           Text(
                             'Agrega tu primer presupuesto para comenzar',
                             style: TextStyle(
-                              color: AppTheme.getTextSecondaryColor(context),
+                              color:
+                                  Theme.of(
+                                    context,
+                                  ).textTheme.bodyMedium?.color ??
+                                  Colors.grey[600],
                               fontSize: 14,
                             ),
                           ),
@@ -793,15 +798,15 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            AppTheme.getPrimaryColor(context).withOpacity(0.1),
-            AppTheme.getPrimaryColor(context).withOpacity(0.05),
+            Theme.of(context).primaryColor.withOpacity(0.1),
+            Theme.of(context).primaryColor.withOpacity(0.05),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: AppTheme.getPrimaryColor(context).withOpacity(0.2),
+          color: Theme.of(context).primaryColor.withOpacity(0.2),
           width: 1,
         ),
       ),
@@ -812,14 +817,16 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
             children: [
               Icon(
                 Icons.account_balance_wallet,
-                color: AppTheme.getPrimaryColor(context),
+                color: Theme.of(context).primaryColor,
                 size: 24,
               ),
               const SizedBox(width: 12),
               Text(
                 'Resumen de Presupuestos',
                 style: TextStyle(
-                  color: AppTheme.getTextPrimaryColor(context),
+                  color:
+                      Theme.of(context).textTheme.bodyLarge?.color ??
+                      Colors.black87,
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
                 ),
@@ -840,7 +847,7 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
                     symbol: 'RD\$',
                   ).format(totalBudget),
                   Icons.account_balance_wallet_outlined,
-                  AppTheme.getPrimaryColor(context),
+                  Theme.of(context).primaryColor,
                 ),
               ),
               const SizedBox(width: 12),
@@ -853,7 +860,7 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
                     symbol: 'RD\$',
                   ).format(totalSpent),
                   Icons.trending_down,
-                  AppTheme.getErrorColor(context),
+                  Colors.red,
                 ),
               ),
             ],
@@ -871,9 +878,7 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
                     symbol: 'RD\$',
                   ).format(remaining),
                   Icons.savings,
-                  remaining >= 0
-                      ? AppTheme.getSuccessColor(context)
-                      : AppTheme.getErrorColor(context),
+                  remaining >= 0 ? Colors.green : Colors.red,
                 ),
               ),
               const SizedBox(width: 12),
@@ -883,7 +888,7 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
                   'Progreso',
                   '${percentage.toStringAsFixed(1)}%',
                   Icons.trending_up,
-                  AppTheme.getWarningColor(context),
+                  Colors.orange,
                 ),
               ),
             ],
@@ -903,7 +908,7 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.getSurfaceColor(context),
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: color.withOpacity(0.2), width: 1),
       ),
@@ -918,7 +923,9 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
                 child: Text(
                   title,
                   style: TextStyle(
-                    color: AppTheme.getTextSecondaryColor(context),
+                    color:
+                        Theme.of(context).textTheme.bodyMedium?.color ??
+                        Colors.grey[600],
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
                   ),
@@ -948,7 +955,8 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
         Text(
           'Presupuestos Activos',
           style: TextStyle(
-            color: AppTheme.getTextPrimaryColor(context),
+            color:
+                Theme.of(context).textTheme.bodyLarge?.color ?? Colors.black87,
             fontSize: 18,
             fontWeight: FontWeight.w600,
           ),
@@ -971,9 +979,9 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.getSurfaceColor(context),
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.getBorderColor(context), width: 1),
+        border: Border.all(color: Theme.of(context).dividerColor, width: 1),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.03),
@@ -1018,7 +1026,9 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
                     Text(
                       budget.category.name,
                       style: TextStyle(
-                        color: AppTheme.getTextPrimaryColor(context),
+                        color:
+                            Theme.of(context).textTheme.bodyLarge?.color ??
+                            Colors.black87,
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
                       ),
@@ -1026,7 +1036,9 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
                     Text(
                       'Presupuesto mensual',
                       style: TextStyle(
-                        color: AppTheme.getTextSecondaryColor(context),
+                        color:
+                            Theme.of(context).textTheme.bodyMedium?.color ??
+                            Colors.grey[600],
                         fontSize: 12,
                         fontWeight: FontWeight.w500,
                       ),
@@ -1043,7 +1055,7 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
                     onPressed: () => _editBudget(budget),
                     icon: Icon(
                       Icons.edit_outlined,
-                      color: AppTheme.getPrimaryColor(context),
+                      color: Theme.of(context).primaryColor,
                       size: 18,
                     ),
                     tooltip: 'Editar',
@@ -1057,7 +1069,7 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
                     onPressed: () => _deleteBudget(budget.id),
                     icon: Icon(
                       Icons.delete_outline,
-                      color: AppTheme.getErrorColor(context),
+                      color: Colors.red,
                       size: 18,
                     ),
                     tooltip: 'Eliminar',
@@ -1084,7 +1096,9 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
                   Text(
                     'Progreso',
                     style: TextStyle(
-                      color: AppTheme.getTextSecondaryColor(context),
+                      color:
+                          Theme.of(context).textTheme.bodyMedium?.color ??
+                          Colors.grey[600],
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
                     ),
@@ -1093,8 +1107,9 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
                     '${percentage.toStringAsFixed(1)}%',
                     style: TextStyle(
                       color: isOverBudget
-                          ? AppTheme.getErrorColor(context)
-                          : AppTheme.getTextSecondaryColor(context),
+                          ? Colors.red
+                          : Theme.of(context).textTheme.bodyMedium?.color ??
+                                Colors.grey[600],
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
                     ),
@@ -1104,11 +1119,9 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
               const SizedBox(height: 6),
               LinearProgressIndicator(
                 value: percentage / 100,
-                backgroundColor: AppTheme.getBorderColor(context),
+                backgroundColor: Theme.of(context).dividerColor,
                 valueColor: AlwaysStoppedAnimation<Color>(
-                  isOverBudget
-                      ? AppTheme.getErrorColor(context)
-                      : AppTheme.getPrimaryColor(context),
+                  isOverBudget ? Colors.red : Theme.of(context).primaryColor,
                 ),
                 minHeight: 6,
               ),
@@ -1127,7 +1140,9 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
                     Text(
                       'Presupuestado',
                       style: TextStyle(
-                        color: AppTheme.getTextSecondaryColor(context),
+                        color:
+                            Theme.of(context).textTheme.bodyMedium?.color ??
+                            Colors.grey[600],
                         fontSize: 11,
                         fontWeight: FontWeight.w500,
                       ),
@@ -1139,7 +1154,9 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
                         symbol: 'RD\$',
                       ).format(amount),
                       style: TextStyle(
-                        color: AppTheme.getTextPrimaryColor(context),
+                        color:
+                            Theme.of(context).textTheme.bodyLarge?.color ??
+                            Colors.black87,
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
                       ),
@@ -1154,7 +1171,9 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
                     Text(
                       'Gastado',
                       style: TextStyle(
-                        color: AppTheme.getTextSecondaryColor(context),
+                        color:
+                            Theme.of(context).textTheme.bodyMedium?.color ??
+                            Colors.grey[600],
                         fontSize: 11,
                         fontWeight: FontWeight.w500,
                       ),
@@ -1166,7 +1185,7 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
                         symbol: 'RD\$',
                       ).format(spent),
                       style: TextStyle(
-                        color: AppTheme.getErrorColor(context),
+                        color: Colors.red,
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
                       ),
@@ -1181,7 +1200,9 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
                     Text(
                       'Restante',
                       style: TextStyle(
-                        color: AppTheme.getTextSecondaryColor(context),
+                        color:
+                            Theme.of(context).textTheme.bodyMedium?.color ??
+                            Colors.grey[600],
                         fontSize: 11,
                         fontWeight: FontWeight.w500,
                       ),
@@ -1193,9 +1214,7 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
                         symbol: 'RD\$',
                       ).format(remaining),
                       style: TextStyle(
-                        color: remaining >= 0
-                            ? AppTheme.getSuccessColor(context)
-                            : AppTheme.getErrorColor(context),
+                        color: remaining >= 0 ? Colors.green : Colors.red,
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
                       ),

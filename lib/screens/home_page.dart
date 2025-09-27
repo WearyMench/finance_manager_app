@@ -4,11 +4,16 @@ import 'package:intl/intl.dart';
 import '../providers/auth_provider.dart';
 import '../providers/transaction_provider.dart';
 import '../models/api_models.dart';
+import '../models/account.dart';
+import '../services/api_service.dart';
 import 'transaction_form_screen.dart';
 import 'edit_transaction_screen.dart';
 import 'profile_screen.dart';
 import 'categories_screen.dart';
 import 'budgets_screen.dart';
+import 'accounts_screen.dart';
+import 'transfer_categories_screen.dart';
+import 'account_reports_screen.dart';
 import 'stats_page.dart';
 import 'package:csv/csv.dart';
 import 'package:flutter/foundation.dart';
@@ -18,6 +23,7 @@ import 'package:flutter/services.dart';
 import '../utils/web_csv_download.dart'
     if (dart.library.html) '../utils/web_csv_download_web.dart';
 import '../widgets/balance_cards.dart';
+import '../widgets/account_cards.dart';
 import '../widgets/transaction_filters.dart';
 import '../theme/app_theme.dart';
 import '../providers/theme_provider.dart';
@@ -31,6 +37,7 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   List<Transaction> _filteredTransactions = [];
+  List<Account> _accounts = [];
   String _username = '';
   bool _isLoading = true;
   String _currencyCode = 'USD';
@@ -104,6 +111,7 @@ class _HomePageState extends State<HomePage> {
     try {
       await _loadUsername();
       _loadCurrencyFromProfile();
+      await _loadAccounts();
 
       // Load data from TransactionProvider
       final transactionProvider = Provider.of<TransactionProvider>(
@@ -130,6 +138,31 @@ class _HomePageState extends State<HomePage> {
       setState(() {
         _username = authProvider.user?.name ?? 'Usuario';
       });
+    }
+  }
+
+  Future<void> _loadAccounts() async {
+    try {
+      final apiService = ApiService();
+      final response = await apiService.getAccounts();
+      if (response.success && response.data != null) {
+        try {
+          final accountsList = response.data as List;
+          final accounts = accountsList
+              .map(
+                (account) => Account.fromMap(account as Map<String, dynamic>),
+              )
+              .toList();
+
+          setState(() {
+            _accounts = accounts;
+          });
+        } catch (e) {
+          // Handle error silently for now
+        }
+      }
+    } catch (e) {
+      // Handle error silently for now
     }
   }
 
@@ -272,6 +305,49 @@ class _HomePageState extends State<HomePage> {
                       onTap: () {
                         Navigator.pop(context);
                         _showBudgetsDialog();
+                      },
+                    ),
+                    _buildDrawerItem(
+                      icon: Icons.account_balance_rounded,
+                      title: 'Cuentas',
+                      subtitle: 'Gestionar balances',
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const AccountsScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    _buildDrawerItem(
+                      icon: Icons.swap_horiz_rounded,
+                      title: 'Categorías de Transferencias',
+                      subtitle: 'Gestionar categorías de transferencias',
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                const TransferCategoriesScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    _buildDrawerItem(
+                      icon: Icons.analytics_rounded,
+                      title: 'Reportes de Cuentas',
+                      subtitle: 'Análisis y proyecciones',
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const AccountReportsScreen(),
+                          ),
+                        );
                       },
                     ),
                   ],
@@ -892,6 +968,11 @@ class _HomePageState extends State<HomePage> {
                     monthlyBalance: _totalIncomesThisMonth - _totalThisMonth,
                     currencySymbol: _currencySymbol,
                     currencyCode: _currencyCode,
+                  ),
+                  // Account Cards
+                  AccountCards(
+                    accounts: _accounts,
+                    currencySymbol: _currencySymbol,
                   ),
                   // Filtros
                   TransactionFilters(
