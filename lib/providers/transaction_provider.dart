@@ -1,6 +1,9 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../services/api_service.dart';
 import '../models/api_models.dart' as api_models;
+import 'auth_provider.dart';
 
 class TransactionProvider with ChangeNotifier {
   final ApiService _apiService = ApiService();
@@ -16,6 +19,21 @@ class TransactionProvider with ChangeNotifier {
   List<api_models.Budget> get budgets => _budgets;
   bool get isLoading => _isLoading;
   String? get error => _error;
+
+  // Limpiar todos los datos del usuario
+  void clearUserData() {
+    _transactions.clear();
+    _categories.clear();
+    _budgets.clear();
+    _error = null;
+    _isLoading = false;
+    notifyListeners();
+  }
+
+  // Limpiar datos cuando cambia el usuario (método más específico)
+  void clearUserDataOnUserChange() {
+    clearUserData();
+  }
 
   // Filtered transactions
   List<api_models.Transaction> get incomeTransactions =>
@@ -50,13 +68,33 @@ class TransactionProvider with ChangeNotifier {
 
   double get monthlyBalance => monthlyIncome - monthlyExpenses;
 
-  Future<void> loadData({bool forceReload = false}) async {
+  // Helper method to check authentication before operations
+  Future<bool> _checkAuthentication(BuildContext? context) async {
+    if (context != null) {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      return await authProvider.ensureValidToken();
+    }
+    return _apiService.isAuthenticated;
+  }
+
+  Future<void> loadData({
+    bool forceReload = false,
+    BuildContext? context,
+    bool silent = false, // Nuevo parámetro para evitar rebuilds
+  }) async {
     // Don't show loading if we already have data and not forcing reload
     if (!forceReload && _transactions.isNotEmpty && _categories.isNotEmpty) {
       return;
     }
 
-    _setLoading(true);
+    // Verificar autenticación antes de cargar datos
+    final isAuthenticated = await _checkAuthentication(context);
+    if (!isAuthenticated) {
+      _error = 'Sesión expirada. Por favor, inicia sesión nuevamente.';
+      if (!silent) notifyListeners();
+      return;
+    }
+    if (!silent) _setLoading(true);
     _error = null;
 
     try {
@@ -82,7 +120,6 @@ class TransactionProvider with ChangeNotifier {
       if (categoriesResponse.success && categoriesResponse.data != null) {
         _categories = categoriesResponse.data!;
       } else {
-        print('Error loading categories: ${categoriesResponse.message}');
         _categories = _getDefaultCategories();
       }
 
@@ -90,7 +127,6 @@ class TransactionProvider with ChangeNotifier {
       if (transactionsResponse.success && transactionsResponse.data != null) {
         _transactions = transactionsResponse.data!;
       } else {
-        print('Error loading transactions: ${transactionsResponse.message}');
         _transactions = [];
       }
 
@@ -98,17 +134,28 @@ class TransactionProvider with ChangeNotifier {
       if (budgetsResponse.success && budgetsResponse.data != null) {
         _budgets = budgetsResponse.data!;
       } else {
-        print('Error loading budgets: ${budgetsResponse.message}');
         _budgets = [];
       }
     } catch (e) {
-      print('Error loading data: $e');
       _error = 'Error de conexión: $e';
       _categories = _getDefaultCategories();
       _transactions = [];
       _budgets = [];
     } finally {
-      _setLoading(false);
+      if (!silent) _setLoading(false);
+    }
+  }
+
+  Future<void> _loadBudgets() async {
+    try {
+      final budgetsResponse = await _apiService.getBudgets();
+      if (budgetsResponse.success && budgetsResponse.data != null) {
+        _budgets = budgetsResponse.data!;
+      } else {
+        _budgets = [];
+      }
+    } catch (e) {
+      _budgets = [];
     }
   }
 
@@ -137,6 +184,8 @@ class TransactionProvider with ChangeNotifier {
 
       if (response.success && response.data != null) {
         _transactions.insert(0, response.data!);
+        // Reload budgets to update spent amounts
+        await _loadBudgets();
         notifyListeners();
         return true;
       } else {
@@ -158,6 +207,7 @@ class TransactionProvider with ChangeNotifier {
     String? description,
     String? category,
     String? paymentMethod,
+    String? account,
     DateTime? date,
   }) async {
     _setLoading(true);
@@ -171,6 +221,7 @@ class TransactionProvider with ChangeNotifier {
         description: description,
         category: category,
         paymentMethod: paymentMethod,
+        account: account,
         date: date,
       );
 

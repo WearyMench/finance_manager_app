@@ -6,10 +6,13 @@ import '../models/account.dart';
 import '../models/api_models.dart';
 import '../services/api_service.dart';
 import '../widgets/dashboard_cards.dart';
+import '../widgets/budget_alert_widget.dart';
+import '../widgets/session_status_widget.dart';
 import 'transaction_form_screen.dart';
 import 'accounts_screen_improved.dart';
 import 'account_reports_screen.dart';
 import 'transfer_screen.dart';
+import 'budgets_screen.dart';
 
 class NewHomeScreen extends StatefulWidget {
   const NewHomeScreen({super.key});
@@ -34,14 +37,27 @@ class _NewHomeScreenState extends State<NewHomeScreen> {
   @override
   void initState() {
     super.initState();
-    _loadData();
-    // Also load data in TransactionProvider
+
+    // Cargar datos de forma asíncrona para evitar problemas de desmontaje
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<TransactionProvider>(context, listen: false).loadData();
+      if (mounted) {
+        _loadData();
+        // Also load data in TransactionProvider
+        Provider.of<TransactionProvider>(context, listen: false).loadData();
+      }
     });
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+  }
+
   Future<void> _loadData() async {
+    if (!mounted) {
+      return;
+    }
+
     setState(() {
       _isLoading = true;
       _error = null;
@@ -50,6 +66,11 @@ class _NewHomeScreenState extends State<NewHomeScreen> {
     try {
       // Load accounts
       final accountsResponse = await _apiService.getAccounts();
+
+      if (!mounted) {
+        return;
+      }
+
       if (accountsResponse.success && accountsResponse.data != null) {
         _accounts = (accountsResponse.data as List)
             .map((item) => Account.fromMap(item))
@@ -61,29 +82,42 @@ class _NewHomeScreenState extends State<NewHomeScreen> {
         context,
         listen: false,
       );
+
       await transactionProvider.loadData(forceReload: true);
+
+      if (!mounted) {
+        return;
+      }
+
       _recentTransactions = transactionProvider.transactions.take(5).toList();
 
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     } catch (e) {
-      setState(() {
-        _error = 'Error al cargar datos: $e';
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _error = 'Error al cargar datos: $e';
+          _isLoading = false;
+        });
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
-          ? _buildErrorState()
-          : _buildDashboard(),
-    );
+    Widget bodyWidget;
+    if (_isLoading) {
+      bodyWidget = const Center(child: CircularProgressIndicator());
+    } else if (_error != null) {
+      bodyWidget = _buildErrorState();
+    } else {
+      bodyWidget = _buildDashboard();
+    }
+
+    return Scaffold(body: bodyWidget);
   }
 
   Widget _buildErrorState() {
@@ -135,13 +169,14 @@ class _NewHomeScreenState extends State<NewHomeScreen> {
                         end: Alignment.bottomRight,
                         colors: [
                           Theme.of(context).primaryColor,
-                          Theme.of(context).primaryColor.withOpacity(0.8),
+                          Theme.of(context).primaryColor.withValues(alpha: 0.8),
                         ],
                       ),
                     ),
                   ),
                 ),
                 actions: [
+                  const SessionStatusWidget(),
                   IconButton(
                     onPressed: _loadData,
                     icon: const Icon(Icons.refresh),
@@ -212,6 +247,14 @@ class _NewHomeScreenState extends State<NewHomeScreen> {
                       ),
                     ],
                   ),
+                ),
+              ),
+
+              // Budget Alerts
+              SliverToBoxAdapter(
+                child: BudgetAlertWidget(
+                  budgets: transactionProvider.budgets,
+                  onViewBudgets: () => _navigateToBudgets(),
                 ),
               ),
 
@@ -354,7 +397,7 @@ class _NewHomeScreenState extends State<NewHomeScreen> {
         color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: Theme.of(context).dividerColor.withOpacity(0.2),
+          color: Theme.of(context).dividerColor.withValues(alpha: 0.2),
         ),
       ),
       child: Row(
@@ -363,7 +406,7 @@ class _NewHomeScreenState extends State<NewHomeScreen> {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              color: color.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(icon, color: color, size: 20),
@@ -458,6 +501,13 @@ class _NewHomeScreenState extends State<NewHomeScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => const AccountReportsScreen()),
+    );
+  }
+
+  void _navigateToBudgets() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const BudgetsScreen()),
     );
   }
 

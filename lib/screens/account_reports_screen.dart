@@ -29,6 +29,8 @@ class _AccountReportsScreenState extends State<AccountReportsScreen> {
   }
 
   Future<void> _loadData() async {
+    if (!mounted) return;
+
     setState(() {
       _isLoading = true;
       _error = null;
@@ -37,26 +39,36 @@ class _AccountReportsScreenState extends State<AccountReportsScreen> {
     try {
       // Load balance summary
       final summaryResponse = await _apiService.getBalanceSummary();
+      if (!mounted) return;
+
       if (summaryResponse.success && summaryResponse.data != null) {
         _balanceSummary = summaryResponse.data as Map<String, dynamic>;
       }
 
       // Load cash flow
       final cashFlowResponse = await _apiService.getCashFlow();
+      if (!mounted) return;
+
       if (cashFlowResponse.success && cashFlowResponse.data != null) {
         _cashFlow = cashFlowResponse.data as Map<String, dynamic>;
       }
 
       // Load balance projection
       final projectionResponse = await _apiService.getBalanceProjection();
+      if (!mounted) return;
+
       if (projectionResponse.success && projectionResponse.data != null) {
         _balanceProjection = projectionResponse.data as Map<String, dynamic>;
       }
+
+      if (!mounted) return;
 
       setState(() {
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
+
       setState(() {
         _error = 'Error al cargar reportes: $e';
         _isLoading = false;

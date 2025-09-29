@@ -25,6 +25,8 @@ class _AccountsScreenImprovedState extends State<AccountsScreenImproved> {
   }
 
   Future<void> _loadAccounts() async {
+    if (!mounted) return;
+
     setState(() {
       _isLoading = true;
       _error = null;
@@ -32,6 +34,8 @@ class _AccountsScreenImprovedState extends State<AccountsScreenImproved> {
 
     try {
       final response = await _apiService.getAccounts();
+      if (!mounted) return;
+
       if (response.success && response.data != null) {
         setState(() {
           _accounts = (response.data as List)
@@ -46,6 +50,8 @@ class _AccountsScreenImprovedState extends State<AccountsScreenImproved> {
         });
       }
     } catch (e) {
+      if (!mounted) return;
+
       setState(() {
         _error = 'Error de conexión: $e';
         _isLoading = false;

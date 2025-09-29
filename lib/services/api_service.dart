@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/api_models.dart';
+import '../models/account.dart';
 import '../config/api_config.dart';
 
 class ApiService {
@@ -22,6 +23,11 @@ class ApiService {
     if (_token == null) {
       await _loadToken();
     }
+  }
+
+  // Public method to ensure token is loaded
+  Future<void> ensureTokenLoaded() async {
+    await _ensureTokenLoaded();
   }
 
   Future<void> _saveToken(String token) async {
@@ -68,43 +74,58 @@ class ApiService {
           message: data is Map<String, dynamic> ? data['message'] : null,
         );
       } else {
-        final error = json.decode(response.body);
         String errorMessage = 'Error desconocido';
 
-        // Manejo específico de códigos de error HTTP
-        switch (response.statusCode) {
-          case 400:
-            errorMessage = error['message'] ?? 'Datos inválidos';
-            break;
-          case 401:
-            errorMessage = error['message'] ?? 'No autorizado';
-            break;
-          case 403:
-            errorMessage = error['message'] ?? 'Acceso denegado';
-            break;
-          case 404:
-            errorMessage = error['message'] ?? 'Recurso no encontrado';
-            break;
-          case 422:
-            errorMessage = error['message'] ?? 'Datos de entrada inválidos';
-            break;
-          case 500:
-            errorMessage = 'Error interno del servidor. Inténtalo más tarde';
-            break;
-          case 503:
-            errorMessage = 'Servicio no disponible. Inténtalo más tarde';
-            break;
-          default:
-            errorMessage =
-                error['message'] ??
-                'Error del servidor (${response.statusCode})';
+        try {
+          final error = json.decode(response.body);
+
+          // Manejo específico de códigos de error HTTP
+          switch (response.statusCode) {
+            case 400:
+              errorMessage = error is Map<String, dynamic>
+                  ? (error['message'] ?? 'Datos inválidos')
+                  : 'Datos inválidos';
+              break;
+            case 401:
+              errorMessage = error is Map<String, dynamic>
+                  ? (error['message'] ?? 'No autorizado')
+                  : 'No autorizado';
+              break;
+            case 403:
+              errorMessage = error is Map<String, dynamic>
+                  ? (error['message'] ?? 'Acceso denegado')
+                  : 'Acceso denegado';
+              break;
+            case 404:
+              errorMessage = error is Map<String, dynamic>
+                  ? (error['message'] ?? 'Recurso no encontrado')
+                  : 'Recurso no encontrado';
+              break;
+            case 422:
+              errorMessage = error is Map<String, dynamic>
+                  ? (error['message'] ?? 'Datos de entrada inválidos')
+                  : 'Datos de entrada inválidos';
+              break;
+            case 500:
+              errorMessage = 'Error interno del servidor. Inténtalo más tarde';
+              break;
+            case 503:
+              errorMessage = 'Servicio no disponible. Inténtalo más tarde';
+              break;
+            default:
+              errorMessage = error is Map<String, dynamic>
+                  ? (error['message'] ??
+                        'Error del servidor (${response.statusCode})')
+                  : 'Error del servidor (${response.statusCode})';
+          }
+        } catch (jsonError) {
+          // Si el response body no es JSON válido, usar el texto plano
+          errorMessage = response.body.isNotEmpty
+              ? response.body
+              : 'Error del servidor (${response.statusCode})';
         }
 
-        return ApiResponse<T>(
-          success: false,
-          message: errorMessage,
-          error: error['error'],
-        );
+        return ApiResponse<T>(success: false, message: errorMessage);
       }
     } catch (e) {
       return ApiResponse<T>(
@@ -247,7 +268,64 @@ class ApiService {
     await _clearToken();
   }
 
-  bool get isAuthenticated => _token != null;
+  bool get isAuthenticated => _token != null && _token!.isNotEmpty;
+
+  // Renovar el token usando el endpoint de refresh
+  Future<bool> refreshToken() async {
+    if (_token == null || _token!.isEmpty) return false;
+
+    try {
+      await _ensureTokenLoaded();
+      final response = await http.post(
+        Uri.parse('$baseUrl/auth/refresh'),
+        headers: _headers,
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['token'] != null) {
+          await _saveToken(data['token']);
+          return true;
+        }
+      }
+      return false;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // Verificar si el token actual es válido con el servidor
+  Future<bool> isTokenValid() async {
+    if (_token == null || _token!.isEmpty) return false;
+
+    try {
+      await _ensureTokenLoaded();
+      final response = await http.get(
+        Uri.parse('$baseUrl/auth/me'),
+        headers: _headers,
+      );
+
+      // Si la respuesta es 200, el token es válido
+      if (response.statusCode == 200) {
+        return true;
+      } else if (response.statusCode == 401) {
+        // Token expirado, intentar renovar
+        final refreshed = await refreshToken();
+        if (refreshed) {
+          return true;
+        } else {
+          // No se pudo renovar, limpiar token
+          await _clearToken();
+          return false;
+        }
+      }
+      return false;
+    } catch (e) {
+      // En caso de error de conexión, asumimos que el token podría ser válido
+      // para evitar desloguear al usuario por problemas de red
+      return _token != null && _token!.isNotEmpty;
+    }
+  }
 
   // Transaction methods
   Future<ApiResponse<List<Transaction>>> getTransactions({
@@ -287,30 +365,86 @@ class ApiService {
         List<Transaction> transactions = [];
 
         if (data is List) {
+          // Direct array response
           transactions = data.map((t) {
             return Transaction.fromJson(t as Map<String, dynamic>);
           }).toList();
         } else if (data is Map<String, dynamic>) {
           if (data.containsKey('transactions')) {
+            // Backend response format: { transactions: [...], pagination: {...} }
             final transactionsList = data['transactions'] as List;
             transactions = transactionsList.map((t) {
               if (t is Map<String, dynamic>) {
                 return Transaction.fromJson(t);
-              } else if (t is Transaction) {
-                return t;
               } else {
-                return Transaction.fromJson(t as Map<String, dynamic>);
+                // Handle case where t might be a string or other type
+                // Skip unexpected transaction types
+                // Create a default transaction instead of crashing
+                return Transaction(
+                  id: '',
+                  type: 'expense',
+                  amount: 0.0,
+                  description: 'Transacción inválida',
+                  category: Category(
+                    id: '',
+                    name: 'Error',
+                    type: 'expense',
+                    color: '#FF0000',
+                    icon: 'error',
+                  ),
+                  paymentMethod: 'cash',
+                  account: Account(
+                    name: 'Error',
+                    type: 'cash',
+                    balance: 0.0,
+                    currency: 'USD',
+                    isActive: true,
+                    isDefault: false,
+                    createdAt: DateTime.now(),
+                    updatedAt: DateTime.now(),
+                  ),
+                  transferType: 'expense',
+                  date: DateTime.now(),
+                  createdAt: DateTime.now(),
+                );
               }
             }).toList();
           } else if (data.containsKey('data') && data['data'] is List) {
+            // Alternative response format: { data: [...] }
             final transactionsList = data['data'] as List;
             transactions = transactionsList.map((t) {
               if (t is Map<String, dynamic>) {
                 return Transaction.fromJson(t);
-              } else if (t is Transaction) {
-                return t;
               } else {
-                return Transaction.fromJson(t as Map<String, dynamic>);
+                // Skip unexpected transaction types
+                // Create a default transaction instead of crashing
+                return Transaction(
+                  id: '',
+                  type: 'expense',
+                  amount: 0.0,
+                  description: 'Transacción inválida',
+                  category: Category(
+                    id: '',
+                    name: 'Error',
+                    type: 'expense',
+                    color: '#FF0000',
+                    icon: 'error',
+                  ),
+                  paymentMethod: 'cash',
+                  account: Account(
+                    name: 'Error',
+                    type: 'cash',
+                    balance: 0.0,
+                    currency: 'USD',
+                    isActive: true,
+                    isDefault: false,
+                    createdAt: DateTime.now(),
+                    updatedAt: DateTime.now(),
+                  ),
+                  transferType: 'expense',
+                  date: DateTime.now(),
+                  createdAt: DateTime.now(),
+                );
               }
             }).toList();
           }
@@ -392,6 +526,7 @@ class ApiService {
     String? description,
     String? category,
     String? paymentMethod,
+    String? account,
     DateTime? date,
   }) async {
     try {
@@ -401,6 +536,7 @@ class ApiService {
       if (description != null) body['description'] = description;
       if (category != null) body['category'] = category;
       if (paymentMethod != null) body['paymentMethod'] = paymentMethod;
+      if (account != null) body['account'] = account;
       if (date != null) body['date'] = date.toIso8601String();
 
       final response = await http.put(
@@ -1294,6 +1430,95 @@ class ApiService {
       );
     } catch (e) {
       return ApiResponse<Map<String, dynamic>>(
+        success: false,
+        message: 'Error de conexión: $e',
+      );
+    }
+  }
+
+  Future<ApiResponse<AuthResponse>> verifyEmail(String code) async {
+    try {
+      await _ensureTokenLoaded();
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/auth/verify-email'),
+        headers: _headers,
+        body: json.encode({'code': code}),
+      );
+
+      final result = await _handleResponse<AuthResponse>(
+        response,
+        (data) => AuthResponse.fromJson(data),
+      );
+
+      if (result.success && result.data != null) {
+        await _saveToken(result.data!.token);
+      }
+
+      return result;
+    } catch (e) {
+      return ApiResponse<AuthResponse>(
+        success: false,
+        message: 'Error de conexión: $e',
+      );
+    }
+  }
+
+  Future<ApiResponse<void>> resendVerificationCode() async {
+    try {
+      await _ensureTokenLoaded();
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/auth/resend-verification'),
+        headers: _headers,
+        body: json.encode({}),
+      );
+
+      return await _handleResponse<void>(response, (data) => null);
+    } catch (e) {
+      return ApiResponse<void>(
+        success: false,
+        message: 'Error de conexión: $e',
+      );
+    }
+  }
+
+  Future<ApiResponse<void>> forgotPassword(String email) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/auth/forgot-password'),
+        headers: _headers,
+        body: json.encode({'email': email}),
+      );
+
+      return await _handleResponse<void>(response, (data) => null);
+    } catch (e) {
+      return ApiResponse<void>(
+        success: false,
+        message: 'Error de conexión: $e',
+      );
+    }
+  }
+
+  Future<ApiResponse<void>> resetPassword({
+    required String email,
+    required String code,
+    required String newPassword,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/auth/reset-password'),
+        headers: _headers,
+        body: json.encode({
+          'email': email,
+          'code': code,
+          'newPassword': newPassword,
+        }),
+      );
+
+      return await _handleResponse<void>(response, (data) => null);
+    } catch (e) {
+      return ApiResponse<void>(
         success: false,
         message: 'Error de conexión: $e',
       );

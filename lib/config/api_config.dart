@@ -2,10 +2,10 @@ class ApiConfig {
   // Configuración de la API
   static const String _devUrl = 'http://localhost:5000/api';
   static const String _prodUrl =
-      'https://tu-servidor.com/api'; // URL de producción
+      'https://expenses.lynimo.com/api'; // URL de producción
 
   // Cambia esto a 'production' cuando quieras compilar para producción
-  static const String _environment = 'development';
+  static const String _environment = 'production';
 
   static String get baseUrl {
     switch (_environment) {
@@ -20,9 +20,9 @@ class ApiConfig {
   // URLs específicas para diferentes entornos
   static const Map<String, String> environments = {
     'development': 'http://localhost:5000/api',
-    'production': 'https://tu-servidor.com/api',
+    'production': 'https://expenses.lynimo.com/api',
     // Puedes agregar más entornos aquí
-    'staging': 'https://staging-tu-servidor.com/api',
+    'staging': 'https://staging-expenses.lynimo.com/api',
   };
 
   // Método para cambiar el entorno dinámicamente

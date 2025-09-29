@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
-import '../../utils/app_colors.dart';
 import 'register_screen.dart';
+import 'forgot_password_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -17,6 +17,8 @@ class _LoginScreenState extends State<LoginScreen>
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
+  bool _biometricAvailable = false;
+  bool _biometricEnabled = false;
 
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
@@ -43,6 +45,30 @@ class _LoginScreenState extends State<LoginScreen>
         );
 
     _animationController.forward();
+    _checkBiometricAvailability();
+  }
+
+  Future<void> _checkBiometricAvailability() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+    try {
+      final biometricAvailable = await authProvider.isBiometricAvailable();
+      final biometricEnabled = await authProvider.isBiometricEnabled();
+
+      if (mounted) {
+        setState(() {
+          _biometricAvailable = biometricAvailable;
+          _biometricEnabled = biometricEnabled;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _biometricAvailable = false;
+          _biometricEnabled = false;
+        });
+      }
+    }
   }
 
   @override
@@ -67,11 +93,13 @@ class _LoginScreenState extends State<LoginScreen>
     );
 
     if (success && mounted) {
-      // Navigation will be handled by the main app wrapper
+      // Preguntar si quiere habilitar biometría después del login exitoso
+      _askForBiometricSetup();
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text('¡Bienvenido!'),
-          backgroundColor: AppColors.getSuccessColor(context),
+          backgroundColor: Colors.green,
           duration: const Duration(seconds: 2),
         ),
       );
@@ -80,7 +108,7 @@ class _LoginScreenState extends State<LoginScreen>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(authProvider.error!),
-          backgroundColor: AppColors.getDangerColor(context),
+          backgroundColor: Colors.red,
           duration: const Duration(seconds: 4),
           action: SnackBarAction(
             label: 'Cerrar',
@@ -94,6 +122,102 @@ class _LoginScreenState extends State<LoginScreen>
     }
   }
 
+  Future<void> _askForBiometricSetup() async {
+    if (!_biometricAvailable || _biometricEnabled) return;
+
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('¿Habilitar autenticación biométrica?'),
+        content: const Text(
+          'Puedes usar tu huella dactilar o Face ID para iniciar sesión más rápido y de forma segura.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Ahora no'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              authProvider.enableBiometric(
+                _emailController.text.trim(),
+                _passwordController.text,
+              );
+            },
+            child: const Text('Habilitar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _loginWithBiometric() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    authProvider.clearError();
+
+    try {
+      final success = await authProvider.loginWithBiometric();
+
+      if (success && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('¡Bienvenido!'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      } else if (mounted && authProvider.error != null) {
+        // Mostrar error específico de biometría
+        String errorMessage = authProvider.error!;
+
+        // Personalizar mensajes de error comunes
+        if (errorMessage.contains('fallida') ||
+            errorMessage.contains('cancelada')) {
+          errorMessage = 'Autenticación biométrica cancelada o fallida';
+        } else if (errorMessage.contains('No hay credenciales') ||
+            errorMessage.contains('no está configurada')) {
+          errorMessage =
+              'Primero debes configurar la biometría en Configuración';
+        } else if (errorMessage.contains('no está disponible')) {
+          errorMessage =
+              'La autenticación biométrica no está disponible en este dispositivo';
+        } else if (errorMessage.contains('Windows')) {
+          errorMessage =
+              'La autenticación biométrica no está disponible en Windows. Usa un dispositivo móvil.';
+        }
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
+            action: SnackBarAction(
+              label: 'Configurar',
+              textColor: Colors.white,
+              onPressed: () {
+                // Navegar a configuración
+                Navigator.pushNamed(context, '/settings');
+              },
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error inesperado: ${e.toString()}'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -102,7 +226,10 @@ class _LoginScreenState extends State<LoginScreen>
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: AppColors.getPrimaryGradient(context),
+            colors: [
+              Theme.of(context).primaryColor,
+              Theme.of(context).primaryColor.withValues(alpha: 0.8),
+            ],
           ),
         ),
         child: SafeArea(
@@ -120,10 +247,10 @@ class _LoginScreenState extends State<LoginScreen>
                       Container(
                         padding: const EdgeInsets.all(24),
                         decoration: BoxDecoration(
-                          color: AppColors.getWhiteWithOpacity(0.2),
+                          color: Colors.white.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(24),
                           border: Border.all(
-                            color: AppColors.getWhiteWithOpacity(0.3),
+                            color: Colors.white.withValues(alpha: 0.3),
                             width: 2,
                           ),
                         ),
@@ -150,7 +277,7 @@ class _LoginScreenState extends State<LoginScreen>
                       Text(
                         'Inicia sesión para continuar',
                         style: TextStyle(
-                          color: AppColors.getWhiteWithOpacity(0.9),
+                          color: Colors.white.withValues(alpha: 0.9),
                           fontSize: 16,
                           height: 1.5,
                         ),
@@ -166,7 +293,7 @@ class _LoginScreenState extends State<LoginScreen>
                           borderRadius: BorderRadius.circular(20),
                           boxShadow: [
                             BoxShadow(
-                              color: AppColors.getBlackWithOpacity(0.1),
+                              color: Colors.black.withValues(alpha: 0.1),
                               blurRadius: 20,
                               offset: const Offset(0, 10),
                             ),
@@ -189,7 +316,7 @@ class _LoginScreenState extends State<LoginScreen>
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                   filled: true,
-                                  fillColor: AppColors.getSurfaceColor(context),
+                                  fillColor: Theme.of(context).cardColor,
                                 ),
                                 validator: (value) {
                                   if (value == null || value.trim().isEmpty) {
@@ -239,7 +366,7 @@ class _LoginScreenState extends State<LoginScreen>
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                   filled: true,
-                                  fillColor: AppColors.getSurfaceColor(context),
+                                  fillColor: Theme.of(context).cardColor,
                                 ),
                                 validator: (value) {
                                   if (value == null || value.isEmpty) {
@@ -276,10 +403,9 @@ class _LoginScreenState extends State<LoginScreen>
                                             ? null
                                             : _login,
                                         style: ElevatedButton.styleFrom(
-                                          backgroundColor:
-                                              AppColors.getPrimaryColor(
-                                                context,
-                                              ),
+                                          backgroundColor: Theme.of(
+                                            context,
+                                          ).primaryColor,
                                           foregroundColor: Colors.white,
                                           padding: const EdgeInsets.symmetric(
                                             vertical: 16,
@@ -311,6 +437,81 @@ class _LoginScreenState extends State<LoginScreen>
                                                 ),
                                               ),
                                       ),
+                                      const SizedBox(height: 16),
+
+                                      // Forgot password link
+                                      TextButton(
+                                        onPressed: () {
+                                          Navigator.of(context).push(
+                                            MaterialPageRoute(
+                                              builder: (context) =>
+                                                  const ForgotPasswordScreen(),
+                                            ),
+                                          );
+                                        },
+                                        child: Text(
+                                          '¿Olvidaste tu contraseña?',
+                                          style: TextStyle(
+                                            color: Theme.of(
+                                              context,
+                                            ).primaryColor,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+
+                                      // Botón de autenticación biométrica
+                                      if (_biometricEnabled) ...[
+                                        const SizedBox(height: 16),
+                                        const Text(
+                                          'O usa',
+                                          style: TextStyle(
+                                            color: Colors.grey,
+                                            fontSize: 14,
+                                          ),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                        const SizedBox(height: 16),
+
+                                        // Botón de biometría
+                                        if (_biometricEnabled)
+                                          OutlinedButton.icon(
+                                            onPressed: authProvider.isLoading
+                                                ? null
+                                                : _loginWithBiometric,
+                                            icon: Icon(
+                                              Icons.fingerprint,
+                                              color: _biometricAvailable
+                                                  ? Colors.blue
+                                                  : Colors.grey,
+                                            ),
+                                            label: Text(
+                                              _biometricAvailable
+                                                  ? 'Huella dactilar'
+                                                  : 'Biometría no disponible',
+                                              style: TextStyle(
+                                                color: _biometricAvailable
+                                                    ? Colors.blue
+                                                    : Colors.grey,
+                                              ),
+                                            ),
+                                            style: OutlinedButton.styleFrom(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    vertical: 12,
+                                                  ),
+                                              side: BorderSide(
+                                                color: _biometricAvailable
+                                                    ? Colors.blue
+                                                    : Colors.grey,
+                                              ),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                              ),
+                                            ),
+                                          ),
+                                      ],
 
                                       // Mostrar error si existe
                                       if (authProvider.error != null) ...[
@@ -318,25 +519,23 @@ class _LoginScreenState extends State<LoginScreen>
                                         Container(
                                           padding: const EdgeInsets.all(12),
                                           decoration: BoxDecoration(
-                                            color: AppColors.getDangerColor(
-                                              context,
-                                            ).withOpacity(0.1),
+                                            color: Colors.red.withValues(
+                                              alpha: 0.1,
+                                            ),
                                             borderRadius: BorderRadius.circular(
                                               8,
                                             ),
                                             border: Border.all(
-                                              color: AppColors.getDangerColor(
-                                                context,
-                                              ).withOpacity(0.3),
+                                              color: Colors.red.withValues(
+                                                alpha: 0.3,
+                                              ),
                                             ),
                                           ),
                                           child: Row(
                                             children: [
                                               Icon(
                                                 Icons.error_outline,
-                                                color: AppColors.getDangerColor(
-                                                  context,
-                                                ),
+                                                color: Colors.red,
                                                 size: 20,
                                               ),
                                               const SizedBox(width: 8),
@@ -344,10 +543,7 @@ class _LoginScreenState extends State<LoginScreen>
                                                 child: Text(
                                                   authProvider.error!,
                                                   style: TextStyle(
-                                                    color:
-                                                        AppColors.getDangerColor(
-                                                          context,
-                                                        ),
+                                                    color: Colors.red,
                                                     fontSize: 14,
                                                   ),
                                                 ),
@@ -363,37 +559,75 @@ class _LoginScreenState extends State<LoginScreen>
                               const SizedBox(height: 16),
 
                               // Register link
-                              TextButton(
-                                onPressed: () {
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (context) =>
-                                          const RegisterScreen(),
-                                    ),
-                                  );
-                                },
-                                child: RichText(
-                                  text: TextSpan(
-                                    style: TextStyle(
-                                      color: AppColors.getTextSecondaryColor(
-                                        context,
-                                      ),
-                                      fontSize: 14,
-                                    ),
-                                    children: [
-                                      const TextSpan(
-                                        text: '¿No tienes cuenta? ',
-                                      ),
-                                      TextSpan(
-                                        text: 'Regístrate',
-                                        style: TextStyle(
-                                          color: AppColors.getPrimaryColor(
-                                            context,
-                                          ),
-                                          fontWeight: FontWeight.w600,
+                              Container(
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: Theme.of(
+                                      context,
+                                    ).dividerColor.withValues(alpha: 0.3),
+                                    width: 1,
+                                  ),
+                                ),
+                                child: Material(
+                                  color: Colors.transparent,
+                                  child: InkWell(
+                                    borderRadius: BorderRadius.circular(8),
+                                    onTap: () {
+                                      Navigator.of(context).push(
+                                        MaterialPageRoute(
+                                          builder: (context) =>
+                                              const RegisterScreen(),
                                         ),
+                                      );
+                                    },
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 16,
+                                        vertical: 12,
                                       ),
-                                    ],
+                                      child: Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Icon(
+                                            Icons.person_add,
+                                            size: 18,
+                                            color: Theme.of(
+                                              context,
+                                            ).primaryColor,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          RichText(
+                                            text: TextSpan(
+                                              style: TextStyle(
+                                                color:
+                                                    Theme.of(context)
+                                                        .textTheme
+                                                        .bodyMedium
+                                                        ?.color ??
+                                                    Colors.grey[600],
+                                                fontSize: 14,
+                                              ),
+                                              children: [
+                                                const TextSpan(
+                                                  text: '¿No tienes cuenta? ',
+                                                ),
+                                                TextSpan(
+                                                  text: 'Regístrate',
+                                                  style: TextStyle(
+                                                    color: Theme.of(
+                                                      context,
+                                                    ).primaryColor,
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ),

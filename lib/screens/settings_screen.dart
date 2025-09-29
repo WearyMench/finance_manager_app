@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/theme_provider.dart';
+import '../widgets/session_status_widget.dart';
 import 'profile_screen.dart';
 import 'categories_screen.dart';
 import 'budgets_screen.dart';
@@ -18,6 +19,12 @@ class SettingsScreen extends StatelessWidget {
         backgroundColor: Theme.of(context).primaryColor,
         foregroundColor: Colors.white,
         elevation: 0,
+        actions: const [
+          Padding(
+            padding: EdgeInsets.only(right: 8.0),
+            child: SessionStatusWidget(),
+          ),
+        ],
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
@@ -33,6 +40,43 @@ class SettingsScreen extends StatelessWidget {
                 title: 'Mi Perfil',
                 subtitle: 'Editar información personal',
                 onTap: () => _navigateToProfile(context),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 24),
+
+          // Security Section
+          _buildSection(
+            context,
+            title: 'Seguridad',
+            children: [
+              Consumer<AuthProvider>(
+                builder: (context, authProvider, child) {
+                  return FutureBuilder<bool>(
+                    future: authProvider.isBiometricAvailable(),
+                    builder: (context, snapshot) {
+                      final bool biometricAvailable = snapshot.data ?? false;
+                      return _buildSettingsItem(
+                        context,
+                        icon: Icons.fingerprint,
+                        title: 'Autenticación biométrica',
+                        subtitle: biometricAvailable
+                            ? 'Usa tu huella dactilar o Face ID'
+                            : 'No disponible en este dispositivo',
+                        onTap: biometricAvailable
+                            ? () => _navigateToBiometricSettings(context)
+                            : () {},
+                        trailing: Switch(
+                          value: authProvider.biometricEnabled,
+                          onChanged: biometricAvailable
+                              ? (value) => _toggleBiometric(context, value)
+                              : null,
+                        ),
+                      );
+                    },
+                  );
+                },
               ),
             ],
           ),
@@ -411,5 +455,143 @@ class SettingsScreen extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  // Security methods
+  void _navigateToBiometricSettings(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Configuración Biométrica'),
+        content: const Text(
+          'La autenticación biométrica está configurada. '
+          'Puedes deshabilitarla desde el switch en la configuración.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cerrar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _toggleBiometric(BuildContext context, bool value) async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+    if (value) {
+      // Habilitar biometría - verificar disponibilidad primero
+      final isAvailable = await authProvider.isBiometricAvailable();
+      if (!isAvailable) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'La autenticación biométrica no está disponible en este dispositivo',
+            ),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
+      }
+
+      // Verificar si ya hay credenciales guardadas
+      final credentials = await authProvider.getBiometricCredentials();
+      if (credentials == null) {
+        // Mostrar diálogo explicativo en lugar de solo un SnackBar
+        await showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Configuración Requerida'),
+            content: const Text(
+              'Para habilitar la autenticación biométrica, primero debes iniciar sesión normalmente. '
+              'Las credenciales se guardarán de forma segura para uso biométrico.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Entendido'),
+              ),
+            ],
+          ),
+        );
+        return;
+      }
+
+      // Mostrar diálogo de confirmación
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Habilitar Biometría'),
+          content: const Text(
+            '¿Quieres habilitar la autenticación biométrica para un acceso más rápido y seguro?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Habilitar'),
+            ),
+          ],
+        ),
+      );
+
+      if (confirmed == true) {
+        await authProvider.enableBiometric(
+          credentials['email']!,
+          credentials['password']!,
+        );
+
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Biometría habilitada exitosamente'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      }
+    } else {
+      // Deshabilitar biometría - mostrar diálogo de confirmación
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Deshabilitar Biometría'),
+          content: const Text(
+            '¿Estás seguro de que quieres deshabilitar la autenticación biométrica?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Deshabilitar'),
+            ),
+          ],
+        ),
+      );
+
+      if (confirmed == true) {
+        await authProvider.disableBiometric();
+
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Biometría deshabilitada'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      }
+    }
   }
 }

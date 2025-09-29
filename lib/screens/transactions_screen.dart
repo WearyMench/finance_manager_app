@@ -19,6 +19,8 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   String? _searchQuery;
   DateTime? _startDate;
   DateTime? _endDate;
+  String? _errorMessage;
+  String? _successMessage;
 
   final List<FilterOption> _typeFilters = [
     FilterOption(value: 'all', label: 'Todas'),
@@ -90,6 +92,91 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                   ],
                 ),
               ),
+
+              // Error and Success Messages
+              if (_errorMessage != null)
+                Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.symmetric(horizontal: 16),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.red[50],
+                    border: Border.all(color: Colors.red[200] ?? Colors.red),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.error_outline,
+                        color: Colors.red[600],
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _errorMessage!,
+                          style: TextStyle(color: Colors.red[600]),
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => setState(() => _errorMessage = null),
+                        icon: Icon(
+                          Icons.close,
+                          color: Colors.red[600],
+                          size: 16,
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 24,
+                          minHeight: 24,
+                        ),
+                        padding: EdgeInsets.zero,
+                      ),
+                    ],
+                  ),
+                ),
+
+              if (_successMessage != null)
+                Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.symmetric(horizontal: 16),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.green[50],
+                    border: Border.all(
+                      color: Colors.green[200] ?? Colors.green,
+                    ),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.check_circle_outline,
+                        color: Colors.green[600],
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _successMessage!,
+                          style: TextStyle(color: Colors.green[600]),
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => setState(() => _successMessage = null),
+                        icon: Icon(
+                          Icons.close,
+                          color: Colors.green[600],
+                          size: 16,
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 24,
+                          minHeight: 24,
+                        ),
+                        padding: EdgeInsets.zero,
+                      ),
+                    ],
+                  ),
+                ),
 
               // Transactions List
               Expanded(
@@ -163,81 +250,146 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       child: Card(
         elevation: 2,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        child: ListTile(
-          contentPadding: const EdgeInsets.all(16),
-          leading: Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(icon, color: color, size: 24),
-          ),
-          title: Text(
-            transaction.description,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-          subtitle: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 4),
-              Text(
-                DateFormat('dd/MM/yyyy • HH:mm').format(transaction.date),
-                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-              ),
-              if (transaction.category != null) ...[
-                const SizedBox(height: 4),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () => _navigateToEditTransaction(transaction),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                // Icono y tipo
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 2,
-                  ),
+                  width: 48,
+                  height: 48,
                   decoration: BoxDecoration(
-                    color: Color(
-                      int.parse(
-                        transaction.category!.color.replaceFirst('#', '0xFF'),
-                      ),
-                    ).withOpacity(0.1),
+                    color: color.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Text(
-                    transaction.category!.name,
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: Color(
-                        int.parse(
-                          transaction.category!.color.replaceFirst('#', '0xFF'),
+                  child: Icon(icon, color: color, size: 24),
+                ),
+                const SizedBox(width: 12),
+
+                // Información de la transacción
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        transaction.description,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
                         ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      fontWeight: FontWeight.w500,
-                    ),
+                      const SizedBox(height: 4),
+                      Text(
+                        DateFormat(
+                          'dd/MM/yyyy • HH:mm',
+                        ).format(transaction.date),
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      ),
+                      Builder(
+                        builder: (context) {
+                          final category = transaction.category;
+                          if (category == null) return const SizedBox.shrink();
+                          return Column(
+                            children: [
+                              const SizedBox(height: 4),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Color(
+                                    int.parse(
+                                      category.color.replaceFirst('#', '0xFF'),
+                                    ),
+                                  ).withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(
+                                  category.name,
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: Color(
+                                      int.parse(
+                                        category.color.replaceFirst(
+                                          '#',
+                                          '0xFF',
+                                        ),
+                                      ),
+                                    ),
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                    ],
                   ),
                 ),
-              ],
-            ],
-          ),
-          trailing: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                '${isIncome ? '+' : '-'}${NumberFormat.currency(symbol: '\$').format(transaction.amount)}',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: color,
+
+                // Monto y botones de acción
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      '${isIncome ? '+' : '-'}${NumberFormat.currency(symbol: '\$').format(transaction.amount)}',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: color,
+                      ),
+                    ),
+                    Text(
+                      _getTypeLabel(transaction.type, transaction.transferType),
+                      style: TextStyle(fontSize: 10, color: Colors.grey[500]),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          onPressed: () =>
+                              _navigateToEditTransaction(transaction),
+                          icon: Icon(
+                            Icons.edit_outlined,
+                            color: Theme.of(context).primaryColor,
+                            size: 18,
+                          ),
+                          tooltip: 'Editar',
+                          constraints: const BoxConstraints(
+                            minWidth: 32,
+                            minHeight: 32,
+                          ),
+                          padding: EdgeInsets.zero,
+                        ),
+                        IconButton(
+                          onPressed: () => _deleteTransaction(transaction.id),
+                          icon: Icon(
+                            Icons.delete_outline,
+                            color: Colors.red,
+                            size: 18,
+                          ),
+                          tooltip: 'Eliminar',
+                          constraints: const BoxConstraints(
+                            minWidth: 32,
+                            minHeight: 32,
+                          ),
+                          padding: EdgeInsets.zero,
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-              ),
-              Text(
-                _getTypeLabel(transaction.type, transaction.transferType),
-                style: TextStyle(fontSize: 10, color: Colors.grey[500]),
-              ),
-            ],
+              ],
+            ),
           ),
-          onTap: () => _navigateToEditTransaction(transaction),
         ),
       ),
     );
@@ -259,18 +411,12 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
 
     // Filter by search query
     if (_searchQuery != null && _searchQuery!.isNotEmpty) {
-      filtered = filtered
-          .where(
-            (t) =>
-                t.description.toLowerCase().contains(
-                  _searchQuery!.toLowerCase(),
-                ) ||
-                (t.category?.name.toLowerCase().contains(
-                      _searchQuery!.toLowerCase(),
-                    ) ??
-                    false),
-          )
-          .toList();
+      final query = _searchQuery!.toLowerCase();
+      filtered = filtered.where((t) {
+        final category = t.category;
+        return t.description.toLowerCase().contains(query) ||
+            (category != null && category.name.toLowerCase().contains(query));
+      }).toList();
     }
 
     // Filter by date range
@@ -321,6 +467,71 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
         builder: (context) => EditTransactionScreen(transaction: transaction),
       ),
     );
+  }
+
+  Future<void> _deleteTransaction(String transactionId) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Eliminar Transacción'),
+        content: const Text(
+          '¿Estás seguro de que quieres eliminar esta transacción? Esta acción no se puede deshacer.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Eliminar'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      setState(() {
+        _errorMessage = null;
+        _successMessage = null;
+      });
+
+      try {
+        final transactionProvider = Provider.of<TransactionProvider>(
+          context,
+          listen: false,
+        );
+
+        final success = await transactionProvider.deleteTransaction(
+          transactionId,
+        );
+
+        if (success) {
+          setState(() {
+            _successMessage = 'Transacción eliminada correctamente';
+          });
+
+          // Clear success message after 3 seconds
+          Future.delayed(const Duration(seconds: 3), () {
+            if (mounted) {
+              setState(() {
+                _successMessage = null;
+              });
+            }
+          });
+        } else {
+          setState(() {
+            _errorMessage =
+                transactionProvider.error ?? 'Error al eliminar la transacción';
+          });
+        }
+      } catch (e) {
+        setState(() {
+          _errorMessage = 'Error al eliminar la transacción: $e';
+        });
+      }
+    }
   }
 
   void _showFilterDialog() {

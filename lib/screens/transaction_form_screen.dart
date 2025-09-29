@@ -100,6 +100,24 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
       final amount = double.parse(_amountController.text.trim());
       final description = _descriptionController.text.trim();
 
+      // Validate account balance for expenses
+      if (_selectedType == 'expense') {
+        final selectedAccount = _accounts.firstWhere(
+          (account) => account.id == _selectedAccountId,
+          orElse: () => throw Exception('Cuenta no encontrada'),
+        );
+
+        if (selectedAccount.balance < amount) {
+          _showError(
+            'Saldo insuficiente. Disponible: \$${selectedAccount.formattedBalance}',
+          );
+          setState(() {
+            _isLoading = false;
+          });
+          return;
+        }
+      }
+
       bool success;
       if (widget.transaction != null) {
         // Editing existing transaction
@@ -110,6 +128,7 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
           description: description,
           category: _selectedCategoryId!,
           paymentMethod: _selectedPaymentMethod,
+          account: _selectedAccountId!,
           date: _selectedDate,
         );
       } else {
@@ -193,7 +212,6 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
       }
     } catch (e) {
       // Handle error silently for now
-      print('Error loading accounts: $e');
     }
   }
 

@@ -130,7 +130,8 @@ class Transaction {
       type: json['type']?.toString() ?? 'expense',
       amount: (json['amount'] as num?)?.toDouble() ?? 0.0,
       description: json['description']?.toString() ?? '',
-      category: json['category'] != null
+      category:
+          json['category'] != null && json['category'] is Map<String, dynamic>
           ? Category.fromJson(json['category'] as Map<String, dynamic>)
           : Category(
               id: '',
@@ -140,7 +141,8 @@ class Transaction {
               icon: 'category',
             ),
       paymentMethod: json['paymentMethod']?.toString() ?? 'cash',
-      account: json['account'] != null
+      account:
+          json['account'] != null && json['account'] is Map<String, dynamic>
           ? Account.fromMap(json['account'] as Map<String, dynamic>)
           : Account(
               name: 'Cuenta desconocida',
@@ -152,7 +154,8 @@ class Transaction {
               createdAt: DateTime.now(),
               updatedAt: DateTime.now(),
             ),
-      toAccount: json['toAccount'] != null
+      toAccount:
+          json['toAccount'] != null && json['toAccount'] is Map<String, dynamic>
           ? Account.fromMap(json['toAccount'] as Map<String, dynamic>)
           : null,
       transferType: json['transferType']?.toString() ?? 'expense',
@@ -235,13 +238,26 @@ class Budget {
 
   factory Budget.fromJson(Map<String, dynamic> json) {
     return Budget(
-      id: json['id'] as String,
-      category: Category.fromJson(json['category'] as Map<String, dynamic>),
-      amount: (json['amount'] as num).toDouble(),
-      spent: (json['spent'] as num).toDouble(),
-      period: json['period'] as String,
-      startDate: DateTime.parse(json['startDate'] as String),
-      endDate: DateTime.parse(json['endDate'] as String),
+      id: json['id']?.toString() ?? json['_id']?.toString() ?? '',
+      category:
+          json['category'] != null && json['category'] is Map<String, dynamic>
+          ? Category.fromJson(json['category'] as Map<String, dynamic>)
+          : Category(
+              id: '',
+              name: 'Sin categoría',
+              type: 'expense',
+              color: '#999999',
+              icon: 'category',
+            ),
+      amount: (json['amount'] as num?)?.toDouble() ?? 0.0,
+      spent: (json['spent'] as num?)?.toDouble() ?? 0.0,
+      period: json['period']?.toString() ?? 'monthly',
+      startDate: json['startDate'] != null
+          ? DateTime.parse(json['startDate'] as String)
+          : DateTime.now(),
+      endDate: json['endDate'] != null
+          ? DateTime.parse(json['endDate'] as String)
+          : DateTime.now().add(const Duration(days: 30)),
     );
   }
 

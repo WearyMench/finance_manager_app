@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
-import '../../utils/app_colors.dart';
+import 'email_verification_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -19,6 +19,7 @@ class _RegisterScreenState extends State<RegisterScreen>
   final _confirmPasswordController = TextEditingController();
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
+  bool _acceptTerms = false;
   String _selectedCurrency = 'USD';
 
   final Map<String, String> _currencies = {
@@ -69,6 +70,18 @@ class _RegisterScreenState extends State<RegisterScreen>
   Future<void> _register() async {
     if (!_formKey.currentState!.validate()) return;
 
+    if (!_acceptTerms) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Debes aceptar los términos y condiciones para continuar',
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final success = await authProvider.register(
       name: _nameController.text.trim(),
@@ -78,12 +91,18 @@ class _RegisterScreenState extends State<RegisterScreen>
     );
 
     if (success && mounted) {
-      // Navigation will be handled by the main app wrapper
+      // Navegar a la pantalla de verificación de email
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (context) =>
+              EmailVerificationScreen(email: _emailController.text.trim()),
+        ),
+      );
     } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(authProvider.error ?? 'Error al registrarse'),
-          backgroundColor: AppColors.getDangerColor(context),
+          backgroundColor: Colors.red,
         ),
       );
     }
@@ -97,7 +116,10 @@ class _RegisterScreenState extends State<RegisterScreen>
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: AppColors.getPrimaryGradient(context),
+            colors: [
+              Theme.of(context).primaryColor,
+              Theme.of(context).primaryColor.withValues(alpha: 0.8),
+            ],
           ),
         ),
         child: SafeArea(
@@ -115,10 +137,10 @@ class _RegisterScreenState extends State<RegisterScreen>
                       Container(
                         padding: const EdgeInsets.all(24),
                         decoration: BoxDecoration(
-                          color: AppColors.getWhiteWithOpacity(0.2),
+                          color: Colors.white.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(24),
                           border: Border.all(
-                            color: AppColors.getWhiteWithOpacity(0.3),
+                            color: Colors.white.withValues(alpha: 0.3),
                             width: 2,
                           ),
                         ),
@@ -145,7 +167,7 @@ class _RegisterScreenState extends State<RegisterScreen>
                       Text(
                         'Únete a nuestra plataforma de gestión financiera',
                         style: TextStyle(
-                          color: AppColors.getWhiteWithOpacity(0.9),
+                          color: Colors.white.withValues(alpha: 0.9),
                           fontSize: 16,
                           height: 1.5,
                         ),
@@ -161,7 +183,7 @@ class _RegisterScreenState extends State<RegisterScreen>
                           borderRadius: BorderRadius.circular(20),
                           boxShadow: [
                             BoxShadow(
-                              color: AppColors.getBlackWithOpacity(0.1),
+                              color: Colors.black.withValues(alpha: 0.1),
                               blurRadius: 20,
                               offset: const Offset(0, 10),
                             ),
@@ -183,7 +205,7 @@ class _RegisterScreenState extends State<RegisterScreen>
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                   filled: true,
-                                  fillColor: AppColors.getSurfaceColor(context),
+                                  fillColor: Theme.of(context).cardColor,
                                 ),
                                 validator: (value) {
                                   if (value == null || value.trim().isEmpty) {
@@ -210,7 +232,7 @@ class _RegisterScreenState extends State<RegisterScreen>
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                   filled: true,
-                                  fillColor: AppColors.getSurfaceColor(context),
+                                  fillColor: Theme.of(context).cardColor,
                                 ),
                                 validator: (value) {
                                   if (value == null || value.trim().isEmpty) {
@@ -237,7 +259,7 @@ class _RegisterScreenState extends State<RegisterScreen>
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                   filled: true,
-                                  fillColor: AppColors.getSurfaceColor(context),
+                                  fillColor: Theme.of(context).cardColor,
                                 ),
                                 items: _currencies.entries.map((entry) {
                                   return DropdownMenuItem<String>(
@@ -261,7 +283,8 @@ class _RegisterScreenState extends State<RegisterScreen>
                                 obscureText: _obscurePassword,
                                 decoration: InputDecoration(
                                   labelText: 'Contraseña',
-                                  hintText: 'Mínimo 6 caracteres',
+                                  hintText:
+                                      'Mínimo 8 caracteres con mayúsculas, números y símbolos',
                                   prefixIcon: const Icon(Icons.lock),
                                   suffixIcon: IconButton(
                                     icon: Icon(
@@ -279,14 +302,24 @@ class _RegisterScreenState extends State<RegisterScreen>
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                   filled: true,
-                                  fillColor: AppColors.getSurfaceColor(context),
+                                  fillColor: Theme.of(context).cardColor,
                                 ),
                                 validator: (value) {
                                   if (value == null || value.isEmpty) {
                                     return 'Por favor ingresa una contraseña';
                                   }
-                                  if (value.length < 6) {
-                                    return 'La contraseña debe tener al menos 6 caracteres';
+                                  if (value.length < 8) {
+                                    return 'La contraseña debe tener al menos 8 caracteres';
+                                  }
+                                  if (!RegExp(
+                                    r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)',
+                                  ).hasMatch(value)) {
+                                    return 'Debe contener mayúsculas, minúsculas y números';
+                                  }
+                                  if (!RegExp(
+                                    r'^(?=.*[!@#$%^&*(),.?":{}|<>])',
+                                  ).hasMatch(value)) {
+                                    return 'Debe contener al menos un símbolo especial';
                                   }
                                   return null;
                                 },
@@ -319,7 +352,7 @@ class _RegisterScreenState extends State<RegisterScreen>
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                   filled: true,
-                                  fillColor: AppColors.getSurfaceColor(context),
+                                  fillColor: Theme.of(context).cardColor,
                                 ),
                                 validator: (value) {
                                   if (value == null || value.isEmpty) {
@@ -333,7 +366,52 @@ class _RegisterScreenState extends State<RegisterScreen>
                                 textInputAction: TextInputAction.done,
                                 onFieldSubmitted: (_) => _register(),
                               ),
-                              const SizedBox(height: 24),
+                              const SizedBox(height: 16),
+
+                              // Terms and conditions
+                              CheckboxListTile(
+                                value: _acceptTerms,
+                                onChanged: (value) {
+                                  setState(() {
+                                    _acceptTerms = value ?? false;
+                                  });
+                                },
+                                title: RichText(
+                                  text: TextSpan(
+                                    style: TextStyle(
+                                      color: Theme.of(
+                                        context,
+                                      ).textTheme.bodyMedium?.color,
+                                      fontSize: 14,
+                                    ),
+                                    children: [
+                                      const TextSpan(text: 'Acepto los '),
+                                      TextSpan(
+                                        text: 'Términos y Condiciones',
+                                        style: TextStyle(
+                                          color: Theme.of(context).primaryColor,
+                                          fontWeight: FontWeight.w600,
+                                          decoration: TextDecoration.underline,
+                                        ),
+                                      ),
+                                      const TextSpan(text: ' y la '),
+                                      TextSpan(
+                                        text: 'Política de Privacidad',
+                                        style: TextStyle(
+                                          color: Theme.of(context).primaryColor,
+                                          fontWeight: FontWeight.w600,
+                                          decoration: TextDecoration.underline,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                controlAffinity:
+                                    ListTileControlAffinity.leading,
+                                contentPadding: EdgeInsets.zero,
+                                dense: true,
+                              ),
+                              const SizedBox(height: 8),
 
                               // Register button
                               Consumer<AuthProvider>(
@@ -343,8 +421,9 @@ class _RegisterScreenState extends State<RegisterScreen>
                                         ? null
                                         : _register,
                                     style: ElevatedButton.styleFrom(
-                                      backgroundColor:
-                                          AppColors.getPrimaryColor(context),
+                                      backgroundColor: Theme.of(
+                                        context,
+                                      ).primaryColor,
                                       foregroundColor: Colors.white,
                                       padding: const EdgeInsets.symmetric(
                                         vertical: 16,
@@ -379,32 +458,70 @@ class _RegisterScreenState extends State<RegisterScreen>
                               const SizedBox(height: 16),
 
                               // Login link
-                              TextButton(
-                                onPressed: () {
-                                  Navigator.of(context).pop();
-                                },
-                                child: RichText(
-                                  text: TextSpan(
-                                    style: TextStyle(
-                                      color: AppColors.getTextSecondaryColor(
-                                        context,
+                              Container(
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: Theme.of(
+                                      context,
+                                    ).dividerColor.withValues(alpha: 0.3),
+                                    width: 1,
+                                  ),
+                                ),
+                                child: Material(
+                                  color: Colors.transparent,
+                                  child: InkWell(
+                                    borderRadius: BorderRadius.circular(8),
+                                    onTap: () {
+                                      Navigator.of(context).pop();
+                                    },
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 16,
+                                        vertical: 12,
                                       ),
-                                      fontSize: 14,
-                                    ),
-                                    children: [
-                                      const TextSpan(
-                                        text: '¿Ya tienes cuenta? ',
-                                      ),
-                                      TextSpan(
-                                        text: 'Inicia sesión',
-                                        style: TextStyle(
-                                          color: AppColors.getPrimaryColor(
-                                            context,
+                                      child: Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Icon(
+                                            Icons.login,
+                                            size: 18,
+                                            color: Theme.of(
+                                              context,
+                                            ).primaryColor,
                                           ),
-                                          fontWeight: FontWeight.w600,
-                                        ),
+                                          const SizedBox(width: 8),
+                                          RichText(
+                                            text: TextSpan(
+                                              style: TextStyle(
+                                                color:
+                                                    Theme.of(context)
+                                                        .textTheme
+                                                        .bodyMedium
+                                                        ?.color ??
+                                                    Colors.grey[600],
+                                                fontSize: 14,
+                                              ),
+                                              children: [
+                                                const TextSpan(
+                                                  text: '¿Ya tienes cuenta? ',
+                                                ),
+                                                TextSpan(
+                                                  text: 'Inicia sesión',
+                                                  style: TextStyle(
+                                                    color: Theme.of(
+                                                      context,
+                                                    ).primaryColor,
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
                                       ),
-                                    ],
+                                    ),
                                   ),
                                 ),
                               ),
