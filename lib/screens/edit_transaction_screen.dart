@@ -178,13 +178,31 @@ class _EditTransactionScreenState extends State<EditTransactionScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isIncome = _selectedType == 'income';
+
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.background,
       appBar: AppBar(
-        title: Text(
-          'Editar ${_selectedType == 'income' ? 'Ingreso' : 'Gasto'}',
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Editar ${isIncome ? 'Ingreso' : 'Gasto'}',
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+            ),
+            Text(
+              'Modifica los datos de la transacción',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.white.withOpacity(0.8),
+                fontWeight: FontWeight.w400,
+              ),
+            ),
+          ],
         ),
-        backgroundColor: AppColors.getPrimaryColor(context),
+        backgroundColor: isIncome
+            ? AppColors.getSuccessColor(context)
+            : AppColors.getDangerColor(context),
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
@@ -201,13 +219,20 @@ class _EditTransactionScreenState extends State<EditTransactionScreen> {
               ),
             )
           else
-            TextButton(
-              onPressed: _saveTransaction,
-              child: const Text(
-                'Guardar',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
+            Container(
+              margin: const EdgeInsets.only(right: 16),
+              child: TextButton(
+                onPressed: _saveTransaction,
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.white,
+                  backgroundColor: Colors.white.withOpacity(0.2),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                child: const Text(
+                  'Guardar',
+                  style: TextStyle(fontWeight: FontWeight.bold),
                 ),
               ),
             ),
@@ -222,10 +247,10 @@ class _EditTransactionScreenState extends State<EditTransactionScreen> {
             if (_errorMessage != null)
               Container(
                 margin: const EdgeInsets.only(bottom: 16),
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   color: AppColors.getDangerColor(context).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(12),
                   border: Border.all(
                     color: AppColors.getDangerColor(context).withOpacity(0.3),
                   ),
@@ -237,13 +262,14 @@ class _EditTransactionScreenState extends State<EditTransactionScreen> {
                       color: AppColors.getDangerColor(context),
                       size: 20,
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: Text(
                         _errorMessage!,
                         style: TextStyle(
                           color: AppColors.getDangerColor(context),
                           fontSize: 14,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ),
@@ -251,200 +277,499 @@ class _EditTransactionScreenState extends State<EditTransactionScreen> {
                 ),
               ),
 
-            // Type selection
-            Card(
-              elevation: 2,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+            // Form Card
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surface,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Tipo de Transacción',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Header
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color:
+                              (isIncome
+                                      ? AppColors.getSuccessColor(context)
+                                      : AppColors.getDangerColor(context))
+                                  .withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(
+                          isIncome
+                              ? Icons.trending_up_rounded
+                              : Icons.trending_down_rounded,
+                          color: isIncome
+                              ? AppColors.getSuccessColor(context)
+                              : AppColors.getDangerColor(context),
+                          size: 24,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Editar ${isIncome ? 'Ingreso' : 'Gasto'}',
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.onSurface,
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            Text(
+                              'Modifica los datos de la transacción',
+                              style: TextStyle(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurface.withOpacity(0.7),
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Type selection
+                  Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.outline.withOpacity(0.2),
                       ),
                     ),
-                    const SizedBox(height: 12),
-                    Row(
+                    child: Column(
                       children: [
-                        Expanded(
-                          child: RadioListTile<String>(
-                            title: const Text('Gasto'),
-                            value: 'expense',
-                            groupValue: _selectedType,
-                            onChanged: (value) {
-                              setState(() {
-                                _selectedType = value!;
-                              });
-                            },
-                            contentPadding: EdgeInsets.zero,
+                        Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.swap_horiz,
+                                color: Theme.of(context).primaryColor,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 12),
+                              Text(
+                                'Tipo de Transacción',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurface,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        Expanded(
-                          child: RadioListTile<String>(
-                            title: const Text('Ingreso'),
-                            value: 'income',
-                            groupValue: _selectedType,
-                            onChanged: (value) {
-                              setState(() {
-                                _selectedType = value!;
-                              });
-                            },
-                            contentPadding: EdgeInsets.zero,
-                          ),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    _selectedType = 'expense';
+                                  });
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: _selectedType == 'expense'
+                                        ? AppColors.getDangerColor(
+                                            context,
+                                          ).withOpacity(0.1)
+                                        : Colors.transparent,
+                                    borderRadius: const BorderRadius.only(
+                                      bottomLeft: Radius.circular(12),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.trending_down,
+                                        color: _selectedType == 'expense'
+                                            ? AppColors.getDangerColor(context)
+                                            : Colors.grey[600],
+                                        size: 20,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'Gasto',
+                                        style: TextStyle(
+                                          color: _selectedType == 'expense'
+                                              ? AppColors.getDangerColor(
+                                                  context,
+                                                )
+                                              : Colors.grey[600],
+                                          fontWeight: _selectedType == 'expense'
+                                              ? FontWeight.w600
+                                              : FontWeight.normal,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                            Container(
+                              width: 1,
+                              height: 40,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.outline.withOpacity(0.2),
+                            ),
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    _selectedType = 'income';
+                                  });
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: _selectedType == 'income'
+                                        ? AppColors.getSuccessColor(
+                                            context,
+                                          ).withOpacity(0.1)
+                                        : Colors.transparent,
+                                    borderRadius: const BorderRadius.only(
+                                      bottomRight: Radius.circular(12),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.trending_up,
+                                        color: _selectedType == 'income'
+                                            ? AppColors.getSuccessColor(context)
+                                            : Colors.grey[600],
+                                        size: 20,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'Ingreso',
+                                        style: TextStyle(
+                                          color: _selectedType == 'income'
+                                              ? AppColors.getSuccessColor(
+                                                  context,
+                                                )
+                                              : Colors.grey[600],
+                                          fontWeight: _selectedType == 'income'
+                                              ? FontWeight.w600
+                                              : FontWeight.normal,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
-                  ],
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 16),
-
-            // Description
-            TextFormField(
-              controller: _descriptionController,
-              decoration: InputDecoration(
-                labelText: 'Descripción',
-                prefixIcon: const Icon(Icons.description),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                filled: true,
-                fillColor: Theme.of(context).colorScheme.surface,
-              ),
-              textCapitalization: TextCapitalization.sentences,
-            ),
-
-            const SizedBox(height: 16),
-
-            // Amount
-            TextFormField(
-              controller: _amountController,
-              decoration: InputDecoration(
-                labelText: 'Monto',
-                prefixIcon: const Icon(Icons.attach_money),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                filled: true,
-                fillColor: Theme.of(context).colorScheme.surface,
-              ),
-              keyboardType: TextInputType.numberWithOptions(decimal: true),
-            ),
-
-            const SizedBox(height: 16),
-
-            // Category
-            TextFormField(
-              controller: _categoryController,
-              decoration: InputDecoration(
-                labelText: 'Categoría',
-                prefixIcon: const Icon(Icons.category),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                filled: true,
-                fillColor: Theme.of(context).colorScheme.surface,
-                suffixIcon: PopupMenuButton<String>(
-                  icon: const Icon(Icons.arrow_drop_down),
-                  onSelected: (value) {
-                    _categoryController.text = value;
-                  },
-                  itemBuilder: (context) => _defaultCategories.map((category) {
-                    return PopupMenuItem(
-                      value: category,
-                      child: Text(category),
-                    );
-                  }).toList(),
-                ),
-              ),
-              textCapitalization: TextCapitalization.words,
-            ),
-
-            const SizedBox(height: 16),
-
-            // Payment Method
-            TextFormField(
-              controller: _paymentMethodController,
-              decoration: InputDecoration(
-                labelText: 'Método de Pago',
-                prefixIcon: const Icon(Icons.payment),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                filled: true,
-                fillColor: Theme.of(context).colorScheme.surface,
-                suffixIcon: PopupMenuButton<String>(
-                  icon: const Icon(Icons.arrow_drop_down),
-                  onSelected: (value) {
-                    _paymentMethodController.text = value;
-                  },
-                  itemBuilder: (context) => _paymentMethods.map((method) {
-                    return PopupMenuItem(value: method, child: Text(method));
-                  }).toList(),
-                ),
-              ),
-              textCapitalization: TextCapitalization.words,
-            ),
-
-            const SizedBox(height: 16),
-
-            // Date
-            InkWell(
-              onTap: _selectDate,
-              child: InputDecorator(
-                decoration: InputDecoration(
-                  labelText: 'Fecha',
-                  prefixIcon: const Icon(Icons.calendar_today),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
                   ),
-                  filled: true,
-                  fillColor: Theme.of(context).colorScheme.surface,
-                ),
-                child: Text(
-                  DateFormat('dd/MM/yyyy').format(_selectedDate),
-                  style: Theme.of(context).textTheme.bodyLarge,
-                ),
-              ),
-            ),
 
-            const SizedBox(height: 32),
+                  const SizedBox(height: 16),
 
-            // Save button
-            ElevatedButton(
-              onPressed: _isLoading ? null : _saveTransaction,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.getPrimaryColor(context),
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                elevation: 2,
-              ),
-              child: _isLoading
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  // Description
+                  TextFormField(
+                    controller: _descriptionController,
+                    decoration: InputDecoration(
+                      labelText: 'Descripción',
+                      hintText: 'Ej: Compra en supermercado',
+                      prefixIcon: Icon(
+                        Icons.description,
+                        color: Theme.of(context).primaryColor,
                       ),
-                    )
-                  : const Text(
-                      'Actualizar Transacción',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.outline.withOpacity(0.2),
+                        ),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.outline.withOpacity(0.2),
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(
+                          color: Theme.of(context).primaryColor,
+                          width: 2,
+                        ),
+                      ),
+                      filled: true,
+                      fillColor: Theme.of(context).colorScheme.background,
+                    ),
+                    textCapitalization: TextCapitalization.sentences,
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Amount
+                  TextFormField(
+                    controller: _amountController,
+                    decoration: InputDecoration(
+                      labelText: 'Monto',
+                      hintText: '0.00',
+                      prefixIcon: Icon(
+                        Icons.attach_money,
+                        color: Theme.of(context).primaryColor,
+                      ),
+                      suffixText: 'RD\$',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.outline.withOpacity(0.2),
+                        ),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.outline.withOpacity(0.2),
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(
+                          color: Theme.of(context).primaryColor,
+                          width: 2,
+                        ),
+                      ),
+                      filled: true,
+                      fillColor: Theme.of(context).colorScheme.background,
+                    ),
+                    keyboardType: TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Category
+                  TextFormField(
+                    controller: _categoryController,
+                    decoration: InputDecoration(
+                      labelText: 'Categoría',
+                      prefixIcon: Icon(
+                        Icons.category,
+                        color: Theme.of(context).primaryColor,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.outline.withOpacity(0.2),
+                        ),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.outline.withOpacity(0.2),
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(
+                          color: Theme.of(context).primaryColor,
+                          width: 2,
+                        ),
+                      ),
+                      filled: true,
+                      fillColor: Theme.of(context).colorScheme.background,
+                      suffixIcon: PopupMenuButton<String>(
+                        icon: const Icon(Icons.arrow_drop_down),
+                        onSelected: (value) {
+                          _categoryController.text = value;
+                        },
+                        itemBuilder: (context) =>
+                            _defaultCategories.map((category) {
+                              return PopupMenuItem(
+                                value: category,
+                                child: Text(category),
+                              );
+                            }).toList(),
                       ),
                     ),
+                    textCapitalization: TextCapitalization.words,
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Payment Method
+                  TextFormField(
+                    controller: _paymentMethodController,
+                    decoration: InputDecoration(
+                      labelText: 'Método de Pago',
+                      prefixIcon: Icon(
+                        Icons.payment,
+                        color: Theme.of(context).primaryColor,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.outline.withOpacity(0.2),
+                        ),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.outline.withOpacity(0.2),
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(
+                          color: Theme.of(context).primaryColor,
+                          width: 2,
+                        ),
+                      ),
+                      filled: true,
+                      fillColor: Theme.of(context).colorScheme.background,
+                      suffixIcon: PopupMenuButton<String>(
+                        icon: const Icon(Icons.arrow_drop_down),
+                        onSelected: (value) {
+                          _paymentMethodController.text = value;
+                        },
+                        itemBuilder: (context) => _paymentMethods.map((method) {
+                          return PopupMenuItem(
+                            value: method,
+                            child: Text(method),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                    textCapitalization: TextCapitalization.words,
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Date
+                  InkWell(
+                    onTap: _selectDate,
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.outline.withOpacity(0.2),
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                        color: Theme.of(context).colorScheme.background,
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.calendar_today,
+                            color: Theme.of(context).primaryColor,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            'Fecha: ${DateFormat('dd/MM/yyyy').format(_selectedDate)}',
+                            style: Theme.of(context).textTheme.bodyLarge,
+                          ),
+                          const Spacer(),
+                          Icon(
+                            Icons.arrow_drop_down,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurface.withOpacity(0.6),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // Save button
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: _isLoading ? null : _saveTransaction,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: isIncome
+                            ? AppColors.getSuccessColor(context)
+                            : AppColors.getDangerColor(context),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: _isLoading
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  Colors.white,
+                                ),
+                              ),
+                            )
+                          : Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.save_rounded, size: 20),
+                                const SizedBox(width: 8),
+                                const Text(
+                                  'Actualizar Transacción',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),

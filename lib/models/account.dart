@@ -129,12 +129,34 @@ class Account {
 
   double? get availableCredit {
     if (type == 'credit' && creditLimit != null) {
-      return creditLimit! - balance.abs();
+      // Para tarjetas de crédito, el balance representa la deuda
+      // Si balance es positivo, significa que hay sobrepago (puede gastar hasta el límite + sobrepago)
+      // Si balance es negativo, significa que hay deuda (puede gastar hasta el límite - deuda)
+      if (balance >= 0) {
+        // Sin deuda o con sobrepago: puede gastar hasta el límite + sobrepago
+        return creditLimit! + balance;
+      } else {
+        // Con deuda: crédito disponible = límite - deuda
+        return creditLimit! - balance.abs();
+      }
     }
     return null;
   }
 
+  // Para tarjetas de crédito, el balance mostrado debe ser la deuda
   String get formattedBalance {
+    if (type == 'credit') {
+      if (balance > 0) {
+        // Con sobrepago: mostrar como positivo
+        return '+\$${balance.toStringAsFixed(2)}';
+      } else if (balance == 0) {
+        // Sin deuda
+        return 'Sin deuda';
+      } else {
+        // Con deuda: mostrar como negativa
+        return '-\$${balance.abs().toStringAsFixed(2)}';
+      }
+    }
     return '\$${balance.toStringAsFixed(2)}';
   }
 

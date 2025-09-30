@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import '../models/account.dart';
 import '../services/api_service.dart';
+import '../providers/transaction_provider.dart';
 import 'account_form_screen.dart';
 import 'transfer_screen.dart';
 
@@ -364,6 +366,70 @@ class _AccountsScreenState extends State<AccountsScreen> {
     );
   }
 
+  Widget _buildCashBreakdownItem(String label, double amount, Color color) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          '\$${amount.toStringAsFixed(2)}',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTransactionCountItem(
+    String label,
+    int count,
+    Color color,
+    IconData icon,
+  ) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: color, size: 16),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              color: color,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            count.toString(),
+            style: TextStyle(
+              fontSize: 18,
+              color: color,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildAccountCard(Account account) {
     return Container(
       decoration: BoxDecoration(
@@ -583,10 +649,133 @@ class _AccountsScreenState extends State<AccountsScreen> {
                                 color: Theme.of(context).colorScheme.onSurface,
                               ),
                             ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Disponible: \$${account.availableCredit?.toStringAsFixed(2) ?? '0.00'}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                                color:
+                                    account.availableCredit != null &&
+                                        account.availableCredit! > 0
+                                    ? Colors.green[600]
+                                    : Colors.red[600],
+                              ),
+                            ),
                           ],
                         ),
                       ),
                   ],
+                ),
+
+                // Cash breakdown for cash accounts
+                if (account.type == 'cash') ...[
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.surfaceVariant.withOpacity(0.5),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.outline.withOpacity(0.2),
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.account_balance_wallet,
+                              size: 16,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Desglose de Efectivo',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: Theme.of(context).colorScheme.onSurface,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildCashBreakdownItem(
+                                'Disponible',
+                                account.balance,
+                                Colors.green,
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: _buildCashBreakdownItem(
+                                'En uso',
+                                0.0, // This would need to be calculated from transactions
+                                Colors.orange,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+
+                // Transaction counts
+                const SizedBox(height: 16),
+                Consumer<TransactionProvider>(
+                  builder: (context, transactionProvider, child) {
+                    final accountTransactions = transactionProvider.transactions
+                        .where((t) => t.account.id == account.id)
+                        .toList();
+
+                    final incomeCount = accountTransactions
+                        .where((t) => t.type == 'income')
+                        .length;
+                    final expenseCount = accountTransactions
+                        .where((t) => t.type == 'expense')
+                        .length;
+
+                    return Row(
+                      children: [
+                        Expanded(
+                          child: _buildTransactionCountItem(
+                            'Ingresos',
+                            incomeCount,
+                            Colors.green,
+                            Icons.trending_up,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildTransactionCountItem(
+                            'Gastos',
+                            expenseCount,
+                            Colors.red,
+                            Icons.trending_down,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildTransactionCountItem(
+                            'Total',
+                            accountTransactions.length,
+                            Theme.of(context).primaryColor,
+                            Icons.receipt_long,
+                          ),
+                        ),
+                      ],
+                    );
+                  },
                 ),
 
                 // Description

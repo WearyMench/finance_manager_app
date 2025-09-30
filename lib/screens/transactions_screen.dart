@@ -93,6 +93,32 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                 ),
               ),
 
+              // Daily Balance Summary
+              if (transactions.isNotEmpty) ...[
+                Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 16),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.outline.withOpacity(0.2),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: _buildDailyBalanceSummary(transactions),
+                ),
+                const SizedBox(height: 16),
+              ],
+
               // Error and Success Messages
               if (_errorMessage != null)
                 Container(
@@ -200,6 +226,122 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
         onPressed: () => _navigateToAddTransaction(),
         backgroundColor: Theme.of(context).primaryColor,
         child: const Icon(Icons.add, color: Colors.white),
+      ),
+    );
+  }
+
+  Widget _buildDailyBalanceSummary(List<Transaction> transactions) {
+    // Group transactions by date
+    final Map<String, List<Transaction>> dailyTransactions = {};
+    for (final transaction in transactions) {
+      final dateKey = DateFormat('yyyy-MM-dd').format(transaction.date);
+      dailyTransactions.putIfAbsent(dateKey, () => []).add(transaction);
+    }
+
+    // Get today's transactions
+    final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
+    final todayTransactions = dailyTransactions[today] ?? [];
+
+    // Calculate today's totals
+    double todayIncome = 0;
+    double todayExpenses = 0;
+    for (final transaction in todayTransactions) {
+      if (transaction.type == 'income') {
+        todayIncome += transaction.amount;
+      } else if (transaction.type == 'expense') {
+        todayExpenses += transaction.amount;
+      }
+    }
+
+    final todayBalance = todayIncome - todayExpenses;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.today, color: Theme.of(context).primaryColor, size: 20),
+            const SizedBox(width: 8),
+            Text(
+              'Resumen de Hoy',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: _buildSummaryCard(
+                'Ingresos',
+                todayIncome,
+                Colors.green,
+                Icons.trending_up,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildSummaryCard(
+                'Gastos',
+                todayExpenses,
+                Colors.red,
+                Icons.trending_down,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildSummaryCard(
+                'Balance',
+                todayBalance,
+                todayBalance >= 0 ? Colors.green : Colors.red,
+                Icons.account_balance_wallet,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSummaryCard(
+    String title,
+    double amount,
+    Color color,
+    IconData icon,
+  ) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: color, size: 16),
+          const SizedBox(height: 4),
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 12,
+              color: color,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            NumberFormat.currency(symbol: '\$').format(amount),
+            style: TextStyle(
+              fontSize: 14,
+              color: color,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
       ),
     );
   }

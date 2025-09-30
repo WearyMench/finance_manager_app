@@ -170,11 +170,11 @@ class _AccountsScreenImprovedState extends State<AccountsScreenImproved> {
 
   Widget _buildAccountCard(Account account) {
     final isCredit = account.type == 'credit';
-    final availableCredit = isCredit
-        ? (account.creditLimit ?? 0) - account.balance
-        : 0.0;
-    final creditUsage = isCredit
-        ? account.balance / (account.creditLimit ?? 1)
+    final availableCredit = isCredit ? (account.availableCredit ?? 0) : 0.0;
+    final creditUsage =
+        isCredit && account.creditLimit != null && account.creditLimit! > 0
+        ? (account.balance < 0 ? account.balance.abs() : 0) /
+              account.creditLimit!
         : 0.0;
     final typeColor = _getTypeColor(account.type);
 
@@ -302,10 +302,10 @@ class _AccountsScreenImprovedState extends State<AccountsScreenImproved> {
                     Row(
                       children: [
                         _buildActionButton(
-                          icon: Icons.swap_horiz,
-                          color: Colors.blue,
+                          icon: isCredit ? Icons.payment : Icons.swap_horiz,
+                          color: isCredit ? Colors.green : Colors.blue,
                           onTap: () => _navigateToTransfer(account),
-                          tooltip: 'Transferir',
+                          tooltip: isCredit ? 'Pagar tarjeta' : 'Transferir',
                         ),
                         const SizedBox(width: 8),
                         PopupMenuButton<String>(
@@ -655,19 +655,25 @@ class _AccountsScreenImprovedState extends State<AccountsScreenImproved> {
 
   // Helper methods
   Widget _buildCompactSummary() {
+    // Calculate total balance excluding credit cards (they represent debt, not assets)
     final totalBalance = _accounts.fold<double>(
       0,
-      (sum, account) => sum + account.balance,
+      (sum, account) => account.type == 'credit' ? sum : sum + account.balance,
     );
+
     final creditAccounts = _accounts.where((a) => a.type == 'credit').toList();
     final totalCreditLimit = creditAccounts.fold<double>(
       0,
       (sum, account) => sum + (account.creditLimit ?? 0),
     );
+
+    // For credit cards, balance represents debt (negative values)
+    // We want to show how much credit is being used
     final totalCreditUsed = creditAccounts.fold<double>(
       0,
-      (sum, account) => sum + account.balance,
+      (sum, account) => sum + (account.balance < 0 ? account.balance.abs() : 0),
     );
+
     final creditUtilization = totalCreditLimit > 0
         ? (totalCreditUsed / totalCreditLimit) * 100
         : 0.0;

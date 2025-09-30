@@ -463,14 +463,66 @@ class _NewHomeScreenState extends State<NewHomeScreen> {
       );
       return;
     }
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => TransferScreen(
-          fromAccount: _accounts.first,
-          accounts: _accounts,
-          onTransferComplete: () => _loadData(),
+
+    // Mostrar diálogo para seleccionar cuenta origen
+    _showAccountSelectionDialog();
+  }
+
+  void _showAccountSelectionDialog() {
+    // Filtrar cuentas que permiten transferencias (excluir tarjetas de crédito)
+    final transferableAccounts = _accounts
+        .where((account) => account.type != 'credit')
+        .toList();
+
+    if (transferableAccounts.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'No tienes cuentas disponibles para transferir (excluyendo tarjetas de crédito)',
+          ),
         ),
+      );
+      return;
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Seleccionar Cuenta Origen'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: transferableAccounts.map((account) {
+            return ListTile(
+              leading: Icon(
+                account.typeIcon,
+                color: Theme.of(context).primaryColor,
+              ),
+              title: Text(account.name),
+              subtitle: Text(
+                '${account.typeDisplay} • ${account.formattedBalance}',
+              ),
+              onTap: () {
+                Navigator.of(context).pop();
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => TransferScreen(
+                      fromAccount: account,
+                      accounts: _accounts,
+                      onTransferComplete: () => _loadData(),
+                    ),
+                  ),
+                );
+              },
+            );
+          }).toList(),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancelar'),
+          ),
+        ],
       ),
     );
   }

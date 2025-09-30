@@ -107,14 +107,29 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
           orElse: () => throw Exception('Cuenta no encontrada'),
         );
 
-        if (selectedAccount.balance < amount) {
-          _showError(
-            'Saldo insuficiente. Disponible: \$${selectedAccount.formattedBalance}',
-          );
-          setState(() {
-            _isLoading = false;
-          });
-          return;
+        if (selectedAccount.type == 'credit') {
+          // For credit cards, check if we have available credit
+          final availableCredit = selectedAccount.availableCredit ?? 0;
+          if (availableCredit < amount) {
+            _showError(
+              'Crédito insuficiente. Disponible: \$${availableCredit.toStringAsFixed(2)}',
+            );
+            setState(() {
+              _isLoading = false;
+            });
+            return;
+          }
+        } else {
+          // For regular accounts, check if we have sufficient balance
+          if (selectedAccount.balance < amount) {
+            _showError(
+              'Saldo insuficiente. Disponible: \$${selectedAccount.formattedBalance}',
+            );
+            setState(() {
+              _isLoading = false;
+            });
+            return;
+          }
         }
       }
 
@@ -768,6 +783,7 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
                         value: _selectedAccountId,
                         decoration: InputDecoration(
                           labelText: 'Cuenta *',
+                          hintText: 'Selecciona cualquier cuenta disponible',
                           prefixIcon: Icon(
                             Icons.account_balance,
                             color: AppTheme.getPrimaryColor(context),
