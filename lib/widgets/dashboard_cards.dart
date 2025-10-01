@@ -5,6 +5,9 @@ class BalanceCard extends StatelessWidget {
   final double totalBalance;
   final double monthlyIncome;
   final double monthlyExpenses;
+  final double totalIncome;
+  final double totalExpenses;
+  final List<dynamic> creditCards;
   final VoidCallback? onTap;
 
   const BalanceCard({
@@ -12,6 +15,9 @@ class BalanceCard extends StatelessWidget {
     required this.totalBalance,
     required this.monthlyIncome,
     required this.monthlyExpenses,
+    required this.totalIncome,
+    required this.totalExpenses,
+    required this.creditCards,
     this.onTap,
   });
 
@@ -75,28 +81,33 @@ class BalanceCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
+
+            // Estadísticas compactas en una sola fila
             Row(
               children: [
                 Expanded(
-                  child: _buildStatItem(
+                  child: _buildCompactStatItem(
+                    'Este Mes',
                     'Ingresos',
                     monthlyIncome,
                     Icons.trending_up,
                     Colors.green[300]!,
                   ),
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: 12),
                 Expanded(
-                  child: _buildStatItem(
+                  child: _buildCompactStatItem(
+                    'Este Mes',
                     'Gastos',
                     monthlyExpenses,
                     Icons.trending_down,
                     Colors.red[300]!,
                   ),
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: 12),
                 Expanded(
-                  child: _buildStatItem(
+                  child: _buildCompactStatItem(
+                    'Este Mes',
                     'Neto',
                     netIncome,
                     isPositive ? Icons.add : Icons.remove,
@@ -105,45 +116,153 @@ class BalanceCard extends StatelessWidget {
                 ),
               ],
             ),
+
+            // Credit Available Section
+            if (creditCards.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              _buildCreditAvailableSection(),
+            ],
           ],
         ),
       ),
     );
   }
 
-  Widget _buildStatItem(
+  Widget _buildCompactStatItem(
+    String period,
     String label,
     double value,
     IconData icon,
     Color color,
   ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(icon, color: color, size: 16),
-            const SizedBox(width: 4),
-            Text(
-              label,
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        children: [
+          Text(
+            period,
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.7),
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: color, size: 14),
+              const SizedBox(width: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.9),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            NumberFormat.currency(symbol: '\$').format(value),
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCreditAvailableSection() {
+    // Calcular el total de crédito disponible
+    final totalAvailableCredit = creditCards.fold<double>(
+      0.0,
+      (sum, card) => sum + (card.availableCredit ?? 0),
+    );
+
+    // Calcular el total de límite de crédito
+    final totalCreditLimit = creditCards.fold<double>(
+      0.0,
+      (sum, card) => sum + (card.creditLimit ?? 0),
+    );
+
+    // Calcular el porcentaje total de utilización
+    final totalUtilizationPercentage = totalCreditLimit > 0
+        ? ((totalCreditLimit - totalAvailableCredit) / totalCreditLimit) * 100
+        : 0;
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.credit_card,
+            color: Colors.white.withOpacity(0.9),
+            size: 16,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Crédito Disponible',
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.9),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  NumberFormat.currency(
+                    symbol: '\$',
+                  ).format(totalAvailableCredit),
+                  style: TextStyle(
+                    color: totalAvailableCredit > 0
+                        ? Colors.green[300]
+                        : Colors.red[300],
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: totalUtilizationPercentage > 80
+                  ? Colors.red.withOpacity(0.2)
+                  : totalUtilizationPercentage > 60
+                  ? Colors.orange.withOpacity(0.2)
+                  : Colors.green.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              '${totalUtilizationPercentage.toStringAsFixed(0)}% usado',
               style: TextStyle(
-                color: Colors.white.withOpacity(0.8),
+                color: Colors.white.withOpacity(0.9),
                 fontSize: 12,
                 fontWeight: FontWeight.w500,
               ),
             ),
-          ],
-        ),
-        const SizedBox(height: 4),
-        Text(
-          NumberFormat.currency(symbol: '\$').format(value),
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -168,8 +287,7 @@ class QuickActionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
+      child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: Theme.of(context).cardColor,
@@ -199,13 +317,20 @@ class QuickActionCard extends StatelessWidget {
             const SizedBox(height: 12),
             Text(
               title,
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Theme.of(context).textTheme.bodyLarge?.color,
+              ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 4),
             Text(
               subtitle,
-              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+              style: TextStyle(
+                fontSize: 12,
+                color: Theme.of(context).textTheme.bodySmall?.color,
+              ),
               textAlign: TextAlign.center,
             ),
           ],
@@ -254,7 +379,7 @@ class AccountSummaryCard extends StatelessWidget {
               height: 40,
               decoration: BoxDecoration(
                 color: color.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(icon, color: color, size: 20),
             ),
@@ -265,14 +390,19 @@ class AccountSummaryCard extends StatelessWidget {
                 children: [
                   Text(
                     accountName,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
+                      color: Theme.of(context).textTheme.bodyLarge?.color,
                     ),
                   ),
+                  const SizedBox(height: 4),
                   Text(
                     _getTypeDisplayName(accountType),
-                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Theme.of(context).textTheme.bodySmall?.color,
+                    ),
                   ),
                 ],
               ),
@@ -281,7 +411,7 @@ class AccountSummaryCard extends StatelessWidget {
               NumberFormat.currency(symbol: '\$').format(balance),
               style: TextStyle(
                 fontSize: 16,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.bold,
                 color: balance >= 0 ? Colors.green[700] : Colors.red[700],
               ),
             ),
@@ -293,14 +423,12 @@ class AccountSummaryCard extends StatelessWidget {
 
   String _getTypeDisplayName(String type) {
     switch (type) {
-      case 'cash':
-        return 'Efectivo';
-      case 'bank':
-        return 'Banco';
-      case 'credit':
-        return 'Crédito';
+      case 'checking':
+        return 'Cuenta Corriente';
       case 'savings':
         return 'Ahorros';
+      case 'credit':
+        return 'Crédito';
       case 'investment':
         return 'Inversión';
       default:

@@ -11,8 +11,10 @@ import '../widgets/session_status_widget.dart';
 import 'transaction_form_screen.dart';
 import 'accounts_screen_improved.dart';
 import 'account_reports_screen.dart';
+import 'analysis_screen.dart';
 import 'transfer_screen.dart';
 import 'budgets_screen.dart';
+import 'account_details_screen.dart';
 
 class NewHomeScreen extends StatefulWidget {
   const NewHomeScreen({super.key});
@@ -43,7 +45,17 @@ class _NewHomeScreenState extends State<NewHomeScreen> {
       if (mounted) {
         _loadData();
         // Also load data in TransactionProvider
-        Provider.of<TransactionProvider>(context, listen: false).loadData();
+        final transactionProvider = Provider.of<TransactionProvider>(
+          context,
+          listen: false,
+        );
+        transactionProvider.loadData();
+        // Configurar callback para recargar cuentas cuando cambien las transacciones
+        transactionProvider.setAccountDataChangedCallback(() {
+          if (mounted) {
+            _loadData();
+          }
+        });
       }
     });
   }
@@ -142,12 +154,16 @@ class _NewHomeScreenState extends State<NewHomeScreen> {
   Widget _buildDashboard() {
     return Consumer<TransactionProvider>(
       builder: (context, transactionProvider, child) {
+        // Calculate total balance excluding credit cards (they represent debt, not assets)
         final totalBalance = _accounts.fold(
           0.0,
-          (sum, account) => sum + account.balance,
+          (sum, account) =>
+              account.type == 'credit' ? sum : sum + account.balance,
         );
-        final monthlyIncome = transactionProvider.totalIncome;
-        final monthlyExpenses = transactionProvider.totalExpenses;
+        final monthlyIncome = transactionProvider.monthlyIncome;
+        final monthlyExpenses = transactionProvider.monthlyExpenses;
+        final totalIncome = transactionProvider.totalIncome;
+        final totalExpenses = transactionProvider.totalExpenses;
 
         return RefreshIndicator(
           onRefresh: _loadData,
@@ -184,7 +200,7 @@ class _NewHomeScreenState extends State<NewHomeScreen> {
                 ],
               ),
 
-              // Balance Card
+              // Balance Card with Credit Available
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.all(16),
@@ -192,6 +208,11 @@ class _NewHomeScreenState extends State<NewHomeScreen> {
                     totalBalance: totalBalance,
                     monthlyIncome: monthlyIncome,
                     monthlyExpenses: monthlyExpenses,
+                    totalIncome: totalIncome,
+                    totalExpenses: totalExpenses,
+                    creditCards: _accounts
+                        .where((account) => account.type == 'credit')
+                        .toList(),
                     onTap: () => _navigateToReports(),
                   ),
                 ),
@@ -535,13 +556,17 @@ class _NewHomeScreenState extends State<NewHomeScreen> {
   }
 
   void _navigateToAccountDetails(Account account) {
-    // TODO: Implement account details screen
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Detalles de ${account.name} - Próximamente'),
-        duration: const Duration(seconds: 2),
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AccountDetailsScreen(account: account),
       ),
-    );
+    ).then((result) {
+      // Si se eliminó la cuenta, recargar los datos
+      if (result == true) {
+        _loadData();
+      }
+    });
   }
 
   void _navigateToTransactions() {
@@ -552,7 +577,7 @@ class _NewHomeScreenState extends State<NewHomeScreen> {
   void _navigateToReports() {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => const AccountReportsScreen()),
+      MaterialPageRoute(builder: (context) => const AnalysisScreen()),
     );
   }
 
@@ -560,6 +585,190 @@ class _NewHomeScreenState extends State<NewHomeScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => const BudgetsScreen()),
+    );
+  }
+
+  Widget _buildCreditCardsSection() {
+    final creditCards = _accounts
+        .where((account) => account.type == 'credit')
+        .toList();
+
+    if (creditCards.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Theme.of(context).dividerColor.withOpacity(0.2),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.credit_card,
+                color: Theme.of(context).primaryColor,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Tarjetas de Crédito',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Theme.of(context).textTheme.bodyLarge?.color,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ...creditCards.map((card) => _buildCreditCardItem(card)).toList(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCreditCardItem(Account card) {
+    final availableCredit = card.availableCredit ?? 0;
+    final creditLimit = card.creditLimit ?? 0;
+    final usedAmount = creditLimit - availableCredit;
+    final utilizationPercentage = creditLimit > 0
+        ? (usedAmount / creditLimit) * 100
+        : 0;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: Theme.of(context).dividerColor.withOpacity(0.2),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                card.name,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: Theme.of(context).textTheme.bodyLarge?.color,
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: utilizationPercentage > 80
+                      ? Colors.red.withOpacity(0.1)
+                      : utilizationPercentage > 60
+                      ? Colors.orange.withOpacity(0.1)
+                      : Colors.green.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '${utilizationPercentage.toStringAsFixed(0)}% usado',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: utilizationPercentage > 80
+                        ? Colors.red[700]
+                        : utilizationPercentage > 60
+                        ? Colors.orange[700]
+                        : Colors.green[700],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Disponible',
+                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                    ),
+                    Text(
+                      NumberFormat.currency(
+                        symbol: '\$',
+                      ).format(availableCredit),
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: availableCredit > 0
+                            ? Colors.green[700]
+                            : Colors.red[700],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      'Límite',
+                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                    ),
+                    Text(
+                      NumberFormat.currency(symbol: '\$').format(creditLimit),
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).textTheme.bodyLarge?.color,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          // Progress bar
+          Container(
+            height: 4,
+            decoration: BoxDecoration(
+              color: Colors.grey[200],
+              borderRadius: BorderRadius.circular(2),
+            ),
+            child: FractionallySizedBox(
+              alignment: Alignment.centerLeft,
+              widthFactor: (utilizationPercentage / 100).clamp(0.0, 1.0),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: utilizationPercentage > 80
+                      ? Colors.red
+                      : utilizationPercentage > 60
+                      ? Colors.orange
+                      : Colors.green,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 

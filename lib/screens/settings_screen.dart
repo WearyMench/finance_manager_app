@@ -5,7 +5,6 @@ import '../providers/theme_provider.dart';
 import '../widgets/session_status_widget.dart';
 import 'profile_screen.dart';
 import 'categories_screen.dart';
-import 'budgets_screen.dart';
 import 'transfer_categories_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
@@ -101,13 +100,6 @@ class SettingsScreen extends StatelessWidget {
                 title: 'Categorías de Transferencias',
                 subtitle: 'Gestionar categorías de transferencias',
                 onTap: () => _navigateToTransferCategories(context),
-              ),
-              _buildSettingsItem(
-                context,
-                icon: Icons.account_balance_wallet,
-                title: 'Presupuestos',
-                subtitle: 'Controlar gastos y límites',
-                onTap: () => _navigateToBudgets(context),
               ),
             ],
           ),
@@ -298,13 +290,6 @@ class SettingsScreen extends StatelessWidget {
     Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => const TransferCategoriesScreen()),
-    );
-  }
-
-  void _navigateToBudgets(BuildContext context) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const BudgetsScreen()),
     );
   }
 

@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../providers/transaction_provider.dart';
 import '../models/api_models.dart' as api_models;
+import '../models/account.dart';
+import '../services/api_service.dart';
 import '../utils/app_colors.dart';
 
 class EditTransactionScreen extends StatefulWidget {
@@ -21,9 +23,16 @@ class _EditTransactionScreenState extends State<EditTransactionScreen> {
   late final TextEditingController _paymentMethodController;
 
   String _selectedType = 'expense';
+  String? _selectedAccountId;
+  String? _selectedCategoryId;
+  String? _selectedPaymentMethod;
   DateTime _selectedDate = DateTime.now();
   String? _errorMessage;
   bool _isLoading = false;
+
+  List<Account> _accounts = [];
+  List<api_models.Category> _categories = [];
+  final ApiService _apiService = ApiService();
 
   final List<String> _defaultCategories = [
     'Comida',
@@ -36,13 +45,11 @@ class _EditTransactionScreenState extends State<EditTransactionScreen> {
     'Otros',
   ];
 
-  final List<String> _paymentMethods = [
-    'Efectivo',
-    'Tarjeta de Débito',
-    'Tarjeta de Crédito',
-    'Transferencia',
-    'Cheque',
-    'Otro',
+  final List<Map<String, String>> _paymentMethods = [
+    {'value': 'cash', 'label': 'Efectivo'},
+    {'value': 'transfer', 'label': 'Transferencia'},
+    {'value': 'debit', 'label': 'Débito'},
+    {'value': 'credit', 'label': 'Crédito'},
   ];
 
   @override
@@ -61,7 +68,12 @@ class _EditTransactionScreenState extends State<EditTransactionScreen> {
       text: widget.transaction.paymentMethod,
     );
     _selectedType = widget.transaction.type;
+    _selectedAccountId = widget.transaction.account.id;
+    _selectedCategoryId = widget.transaction.category.id;
+    _selectedPaymentMethod = widget.transaction.paymentMethod;
     _selectedDate = widget.transaction.date;
+    _loadAccounts();
+    _loadCategories();
   }
 
   @override
@@ -71,6 +83,34 @@ class _EditTransactionScreenState extends State<EditTransactionScreen> {
     _categoryController.dispose();
     _paymentMethodController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadAccounts() async {
+    try {
+      final response = await _apiService.getAccounts();
+      if (response.success && response.data != null) {
+        setState(() {
+          _accounts = (response.data as List)
+              .map((item) => Account.fromMap(item))
+              .toList();
+        });
+      }
+    } catch (e) {
+      // Handle error silently for now
+    }
+  }
+
+  Future<void> _loadCategories() async {
+    try {
+      final response = await _apiService.getCategories();
+      if (response.success && response.data != null) {
+        setState(() {
+          _categories = response.data!;
+        });
+      }
+    } catch (e) {
+      // Handle error silently for now
+    }
   }
 
   Future<void> _selectDate() async {
@@ -106,8 +146,9 @@ class _EditTransactionScreenState extends State<EditTransactionScreen> {
         type: _selectedType,
         amount: double.parse(_amountController.text),
         description: _descriptionController.text.trim(),
-        category: _categoryController.text.trim(),
-        paymentMethod: _paymentMethodController.text.trim(),
+        category: _selectedCategoryId!,
+        paymentMethod: _selectedPaymentMethod!,
+        account: _selectedAccountId!,
         date: _selectedDate,
       );
 
@@ -157,12 +198,17 @@ class _EditTransactionScreenState extends State<EditTransactionScreen> {
       return false;
     }
 
-    if (_categoryController.text.trim().isEmpty) {
+    if (_selectedAccountId == null) {
+      _showError('La cuenta es requerida');
+      return false;
+    }
+
+    if (_selectedCategoryId == null) {
       _showError('La categoría es requerida');
       return false;
     }
 
-    if (_paymentMethodController.text.trim().isEmpty) {
+    if (_selectedPaymentMethod == null) {
       _showError('El método de pago es requerido');
       return false;
     }
@@ -174,6 +220,107 @@ class _EditTransactionScreenState extends State<EditTransactionScreen> {
     setState(() {
       _errorMessage = message;
     });
+  }
+
+  IconData _getAccountIcon(String type) {
+    switch (type) {
+      case 'cash':
+        return Icons.account_balance_wallet;
+      case 'bank':
+        return Icons.account_balance;
+      case 'credit':
+        return Icons.credit_card;
+      case 'savings':
+        return Icons.savings;
+      case 'investment':
+        return Icons.trending_up;
+      default:
+        return Icons.account_balance;
+    }
+  }
+
+  Color _getAccountColor(String type) {
+    switch (type) {
+      case 'cash':
+        return Colors.green;
+      case 'bank':
+        return Colors.blue;
+      case 'credit':
+        return Colors.orange;
+      case 'savings':
+        return Colors.purple;
+      case 'investment':
+        return Colors.teal;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  IconData _getCategoryIcon(String? iconName) {
+    switch (iconName) {
+      case 'food':
+        return Icons.restaurant;
+      case 'transport':
+        return Icons.directions_car;
+      case 'entertainment':
+        return Icons.movie;
+      case 'shopping':
+        return Icons.shopping_bag;
+      case 'health':
+        return Icons.health_and_safety;
+      case 'education':
+        return Icons.school;
+      case 'bills':
+        return Icons.receipt;
+      case 'income':
+        return Icons.attach_money;
+      case 'salary':
+        return Icons.work;
+      case 'freelance':
+        return Icons.computer;
+      case 'investment':
+        return Icons.trending_up;
+      default:
+        return Icons.category;
+    }
+  }
+
+  Color _getCategoryColor(String? colorName) {
+    switch (colorName) {
+      case 'red':
+        return Colors.red;
+      case 'blue':
+        return Colors.blue;
+      case 'green':
+        return Colors.green;
+      case 'orange':
+        return Colors.orange;
+      case 'purple':
+        return Colors.purple;
+      case 'teal':
+        return Colors.teal;
+      case 'pink':
+        return Colors.pink;
+      case 'amber':
+        return Colors.amber;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  IconData _getPaymentMethodIcon(String method) {
+    switch (method) {
+      case 'cash':
+        return Icons.money;
+      case 'transfer':
+        return Icons.swap_horiz;
+      case 'debit':
+        return Icons.credit_card;
+      case 'credit':
+        return Icons.credit_card_outlined;
+      default:
+        return Icons.payment;
+    }
   }
 
   @override
@@ -389,6 +536,8 @@ class _EditTransactionScreenState extends State<EditTransactionScreen> {
                                 onTap: () {
                                   setState(() {
                                     _selectedType = 'expense';
+                                    _selectedCategoryId =
+                                        null; // Reset category when type changes
                                   });
                                 },
                                 child: Container(
@@ -444,6 +593,8 @@ class _EditTransactionScreenState extends State<EditTransactionScreen> {
                                 onTap: () {
                                   setState(() {
                                     _selectedType = 'income';
+                                    _selectedCategoryId =
+                                        null; // Reset category when type changes
                                   });
                                 },
                                 child: Container(
@@ -491,6 +642,82 @@ class _EditTransactionScreenState extends State<EditTransactionScreen> {
                         ),
                       ],
                     ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Account Selection
+                  DropdownButtonFormField<String>(
+                    value: _selectedAccountId,
+                    decoration: InputDecoration(
+                      labelText: 'Cuenta',
+                      prefixIcon: Icon(
+                        Icons.account_balance_wallet,
+                        color: Theme.of(context).primaryColor,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.outline.withOpacity(0.2),
+                        ),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.outline.withOpacity(0.2),
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(
+                          color: Theme.of(context).primaryColor,
+                          width: 2,
+                        ),
+                      ),
+                      filled: true,
+                      fillColor: Theme.of(context).colorScheme.background,
+                    ),
+                    items: _accounts.map((account) {
+                      return DropdownMenuItem(
+                        value: account.id,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              _getAccountIcon(account.type),
+                              size: 20,
+                              color: _getAccountColor(account.type),
+                            ),
+                            const SizedBox(width: 12),
+                            Flexible(
+                              child: Text(
+                                account.name,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'RD\$${account.balance.toStringAsFixed(2)}',
+                              style: TextStyle(
+                                color: account.balance >= 0
+                                    ? Colors.green[700]
+                                    : Colors.red[700],
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                    onChanged: (value) {
+                      setState(() {
+                        _selectedAccountId = value;
+                      });
+                    },
                   ),
 
                   const SizedBox(height: 16),
@@ -581,8 +808,8 @@ class _EditTransactionScreenState extends State<EditTransactionScreen> {
                   const SizedBox(height: 16),
 
                   // Category
-                  TextFormField(
-                    controller: _categoryController,
+                  DropdownButtonFormField<String>(
+                    value: _selectedCategoryId,
                     decoration: InputDecoration(
                       labelText: 'Categoría',
                       prefixIcon: Icon(
@@ -614,34 +841,55 @@ class _EditTransactionScreenState extends State<EditTransactionScreen> {
                       ),
                       filled: true,
                       fillColor: Theme.of(context).colorScheme.background,
-                      suffixIcon: PopupMenuButton<String>(
-                        icon: const Icon(Icons.arrow_drop_down),
-                        onSelected: (value) {
-                          _categoryController.text = value;
-                        },
-                        itemBuilder: (context) =>
-                            _defaultCategories.map((category) {
-                              return PopupMenuItem(
-                                value: category,
-                                child: Text(category),
-                              );
-                            }).toList(),
-                      ),
                     ),
-                    textCapitalization: TextCapitalization.words,
+                    items: _categories
+                        .where((cat) => cat.type == _selectedType)
+                        .map<DropdownMenuItem<String>>((category) {
+                          return DropdownMenuItem<String>(
+                            value: category.id,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  _getCategoryIcon(category.icon),
+                                  size: 20,
+                                  color: _getCategoryColor(category.color),
+                                ),
+                                const SizedBox(width: 12),
+                                Text(category.name),
+                              ],
+                            ),
+                          );
+                        })
+                        .toList(),
+                    onChanged: (value) {
+                      setState(() {
+                        _selectedCategoryId = value;
+                        // Update the text controller for display
+                        if (value != null) {
+                          final category = _categories.firstWhere(
+                            (cat) => cat.id == value,
+                            orElse: () => api_models.Category(
+                              id: '',
+                              name: '',
+                              type: '',
+                              color: '',
+                              icon: '',
+                            ),
+                          );
+                          _categoryController.text = category.name;
+                        }
+                      });
+                    },
                   ),
 
                   const SizedBox(height: 16),
 
                   // Payment Method
-                  TextFormField(
-                    controller: _paymentMethodController,
+                  DropdownButtonFormField<String>(
+                    value: _selectedPaymentMethod,
                     decoration: InputDecoration(
                       labelText: 'Método de Pago',
-                      prefixIcon: Icon(
-                        Icons.payment,
-                        color: Theme.of(context).primaryColor,
-                      ),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                         borderSide: BorderSide(
@@ -667,20 +915,39 @@ class _EditTransactionScreenState extends State<EditTransactionScreen> {
                       ),
                       filled: true,
                       fillColor: Theme.of(context).colorScheme.background,
-                      suffixIcon: PopupMenuButton<String>(
-                        icon: const Icon(Icons.arrow_drop_down),
-                        onSelected: (value) {
-                          _paymentMethodController.text = value;
-                        },
-                        itemBuilder: (context) => _paymentMethods.map((method) {
-                          return PopupMenuItem(
-                            value: method,
-                            child: Text(method),
-                          );
-                        }).toList(),
-                      ),
                     ),
-                    textCapitalization: TextCapitalization.words,
+                    items: _paymentMethods.map<DropdownMenuItem<String>>((
+                      method,
+                    ) {
+                      return DropdownMenuItem<String>(
+                        value: method['value'],
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              _getPaymentMethodIcon(method['value']!),
+                              size: 20,
+                              color: Theme.of(context).primaryColor,
+                            ),
+                            const SizedBox(width: 12),
+                            Text(method['label']!),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                    onChanged: (value) {
+                      setState(() {
+                        _selectedPaymentMethod = value;
+                        // Update the text controller for display
+                        if (value != null) {
+                          final method = _paymentMethods.firstWhere(
+                            (m) => m['value'] == value,
+                            orElse: () => {'value': '', 'label': ''},
+                          );
+                          _paymentMethodController.text = method['label']!;
+                        }
+                      });
+                    },
                   ),
 
                   const SizedBox(height: 16),

@@ -36,6 +36,7 @@ class _AccountAnalysisScreenState extends State<AccountAnalysisScreen> {
 
     try {
       final response = await _apiService.getAccountAnalysis(widget.accountId);
+
       if (response.success && response.data != null) {
         setState(() {
           _analysis = response.data as Map<String, dynamic>;
@@ -220,11 +221,14 @@ class _AccountAnalysisScreenState extends State<AccountAnalysisScreen> {
 
   Widget _buildSummaryCards() {
     final summary = _analysis!['summary'] as Map<String, dynamic>? ?? {};
-    final totalIncome = summary['totalIncome'] ?? 0.0;
-    final totalExpenses = summary['totalExpenses'] ?? 0.0;
-    final totalTransfersIn = summary['totalTransfersIn'] ?? 0.0;
-    final totalTransfersOut = summary['totalTransfersOut'] ?? 0.0;
-    final transactionCount = summary['transactionCount'] ?? 0;
+
+    final totalIncome = (summary['totalIncome'] as num?)?.toDouble() ?? 0.0;
+    final totalExpenses = (summary['totalExpenses'] as num?)?.toDouble() ?? 0.0;
+    final totalTransfersIn =
+        (summary['totalTransfersIn'] as num?)?.toDouble() ?? 0.0;
+    final totalTransfersOut =
+        (summary['totalTransfersOut'] as num?)?.toDouble() ?? 0.0;
+    final transactionCount = summary['transactionCount'] as int? ?? 0;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

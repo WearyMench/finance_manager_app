@@ -38,9 +38,9 @@ class CustomBottomNavigation extends StatelessWidget {
               ),
               _buildNavItem(
                 context,
-                icon: Icons.receipt_long_outlined,
-                activeIcon: Icons.receipt_long,
-                label: 'Transacciones',
+                icon: Icons.account_balance_outlined,
+                activeIcon: Icons.account_balance,
+                label: 'Finanzas',
                 index: 1,
               ),
               _buildNavItem(
@@ -54,7 +54,7 @@ class CustomBottomNavigation extends StatelessWidget {
                 context,
                 icon: Icons.analytics_outlined,
                 activeIcon: Icons.analytics,
-                label: 'Reportes',
+                label: 'Análisis',
                 index: 3,
               ),
               _buildNavItem(

@@ -2,9 +2,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'new_home_screen.dart';
-import 'transactions_screen.dart';
+import 'finance_screen.dart';
 import 'accounts_screen_improved.dart';
-import 'account_reports_screen.dart';
+import 'analysis_screen.dart';
 import 'settings_screen.dart';
 import '../widgets/bottom_navigation.dart';
 import '../providers/auth_provider.dart';
@@ -22,9 +22,9 @@ class _MainScreenState extends State<MainScreen> {
 
   final List<Widget> _screens = [
     const NewHomeScreen(),
-    const TransactionsScreen(),
+    const FinanceScreen(),
     const AccountsScreenImproved(),
-    const AccountReportsScreen(),
+    const AnalysisScreen(),
     const SettingsScreen(),
   ];
 

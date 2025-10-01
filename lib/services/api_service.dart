@@ -1075,6 +1075,7 @@ class ApiService {
 
   Future<ApiResponse<Map<String, dynamic>>> getAccount(String accountId) async {
     try {
+      await _ensureTokenLoaded();
       final response = await http.get(
         Uri.parse('$baseUrl/accounts/$accountId'),
         headers: _headers,

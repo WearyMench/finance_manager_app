@@ -14,6 +14,9 @@ class TransactionProvider with ChangeNotifier {
   bool _isLoading = false;
   String? _error;
 
+  // Callback para notificar cambios que afectan las cuentas
+  VoidCallback? _onAccountDataChanged;
+
   List<api_models.Transaction> get transactions => _transactions;
   List<api_models.Category> get categories => _categories;
   List<api_models.Budget> get budgets => _budgets;
@@ -33,6 +36,16 @@ class TransactionProvider with ChangeNotifier {
   // Limpiar datos cuando cambia el usuario (método más específico)
   void clearUserDataOnUserChange() {
     clearUserData();
+  }
+
+  // Configurar callback para notificar cambios en cuentas
+  void setAccountDataChangedCallback(VoidCallback? callback) {
+    _onAccountDataChanged = callback;
+  }
+
+  // Notificar cambios que afectan las cuentas
+  void _notifyAccountDataChanged() {
+    _onAccountDataChanged?.call();
   }
 
   // Filtered transactions
@@ -186,6 +199,8 @@ class TransactionProvider with ChangeNotifier {
         _transactions.insert(0, response.data!);
         // Reload budgets to update spent amounts
         await _loadBudgets();
+        // Notificar que los datos de cuentas pueden haber cambiado
+        _notifyAccountDataChanged();
         notifyListeners();
         return true;
       } else {
@@ -229,6 +244,8 @@ class TransactionProvider with ChangeNotifier {
         final index = _transactions.indexWhere((t) => t.id == id);
         if (index != -1) {
           _transactions[index] = response.data!;
+          // Notificar que los datos de cuentas pueden haber cambiado
+          _notifyAccountDataChanged();
           notifyListeners();
         }
         return true;
@@ -253,6 +270,8 @@ class TransactionProvider with ChangeNotifier {
 
       if (response.success) {
         _transactions.removeWhere((t) => t.id == id);
+        // Notificar que los datos de cuentas pueden haber cambiado
+        _notifyAccountDataChanged();
         notifyListeners();
         return true;
       } else {

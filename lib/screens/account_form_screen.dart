@@ -23,6 +23,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
   final _descriptionController = TextEditingController();
   final _balanceController = TextEditingController();
   final _creditLimitController = TextEditingController();
+  final _initialDebtController = TextEditingController();
   final _bankNameController = TextEditingController();
   final _accountNumberController = TextEditingController();
 
@@ -84,6 +85,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
     _descriptionController.dispose();
     _balanceController.dispose();
     _creditLimitController.dispose();
+    _initialDebtController.dispose();
     _bankNameController.dispose();
     _accountNumberController.dispose();
     super.dispose();
@@ -97,10 +99,19 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
     });
 
     try {
+      // Calculate balance for credit cards
+      double balance = double.parse(_balanceController.text);
+      if (_selectedType == 'credit' && _initialDebtController.text.isNotEmpty) {
+        // For credit cards, balance represents debt (positive values)
+        // If user enters initial debt, use it as positive balance
+        final initialDebt = double.parse(_initialDebtController.text);
+        balance = initialDebt; // Positive balance = debt
+      }
+
       final accountData = {
         'name': _nameController.text.trim(),
         'type': _selectedType,
-        'balance': double.parse(_balanceController.text),
+        'balance': balance,
         'currency': _selectedCurrency,
         'description': _descriptionController.text.trim().isEmpty
             ? null
@@ -266,34 +277,98 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
             ),
             const SizedBox(height: 16),
 
-            // Saldo inicial
-            TextFormField(
-              controller: _balanceController,
-              decoration: InputDecoration(
-                labelText: 'Saldo inicial *',
-                hintText: '0.00',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+            // Saldo inicial / Deuda inicial
+            if (_selectedType == 'credit') ...[
+              // Para tarjetas de crédito: mostrar campo de deuda inicial
+              TextFormField(
+                controller: _initialDebtController,
+                decoration: InputDecoration(
+                  labelText: 'Deuda inicial (opcional)',
+                  hintText: '0.00',
+                  helperText:
+                      'Si ya tienes deuda en esta tarjeta, ingrésala aquí',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  prefixText: '\$ ',
+                  prefixIcon: const Icon(Icons.credit_card),
                 ),
-                prefixText: '\$ ',
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
+                ],
+                validator: (value) {
+                  if (value != null && value.trim().isNotEmpty) {
+                    final amount = double.tryParse(value);
+                    if (amount == null || amount < 0) {
+                      return 'Ingresa un monto válido (mayor o igual a 0)';
+                    }
+                    // Validar que la deuda inicial no exceda el límite de crédito
+                    if (_creditLimitController.text.isNotEmpty) {
+                      final creditLimit = double.tryParse(
+                        _creditLimitController.text,
+                      );
+                      if (creditLimit != null && amount > creditLimit) {
+                        return 'La deuda inicial no puede exceder el límite de crédito';
+                      }
+                    }
+                  }
+                  return null;
+                },
               ),
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.blue[50],
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.blue[200]!),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.info_outline, color: Colors.blue[600], size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Si dejas este campo vacío, la tarjeta empezará sin deuda (balance = 0)',
+                        style: TextStyle(fontSize: 12, color: Colors.blue[700]),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
-              ],
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'El saldo es requerido';
-                }
-                final amount = double.tryParse(value);
-                if (amount == null) {
-                  return 'Ingresa un monto válido';
-                }
-                return null;
-              },
-            ),
+            ] else ...[
+              // Para otras cuentas: saldo inicial normal
+              TextFormField(
+                controller: _balanceController,
+                decoration: InputDecoration(
+                  labelText: 'Saldo inicial *',
+                  hintText: '0.00',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  prefixText: '\$ ',
+                ),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
+                ],
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'El saldo es requerido';
+                  }
+                  final amount = double.tryParse(value);
+                  if (amount == null) {
+                    return 'Ingresa un monto válido';
+                  }
+                  return null;
+                },
+              ),
+            ],
             const SizedBox(height: 16),
 
             // Moneda

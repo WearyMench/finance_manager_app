@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import '../models/account.dart';
 import '../services/api_service.dart';
+import '../providers/transaction_provider.dart';
 import 'account_form_screen.dart';
 import 'transfer_screen.dart';
+import 'account_details_screen.dart';
 
 class AccountsScreenImproved extends StatefulWidget {
   const AccountsScreenImproved({super.key});
@@ -15,13 +18,31 @@ class AccountsScreenImproved extends StatefulWidget {
 class _AccountsScreenImprovedState extends State<AccountsScreenImproved> {
   final ApiService _apiService = ApiService();
   List<Account> _accounts = [];
+  List<Account> _filteredAccounts = [];
   bool _isLoading = true;
   String? _error;
+  String _searchQuery = '';
+  String _selectedFilter = 'all';
+  String _sortBy = 'name';
+  bool _sortAscending = true;
 
   @override
   void initState() {
     super.initState();
     _loadAccounts();
+
+    // Configurar callback para recargar cuentas cuando cambien las transacciones
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final transactionProvider = Provider.of<TransactionProvider>(
+        context,
+        listen: false,
+      );
+      transactionProvider.setAccountDataChangedCallback(() {
+        if (mounted) {
+          _loadAccounts();
+        }
+      });
+    });
   }
 
   Future<void> _loadAccounts() async {
@@ -43,6 +64,7 @@ class _AccountsScreenImprovedState extends State<AccountsScreenImproved> {
               .toList();
           _isLoading = false;
         });
+        _applyFilters();
       } else {
         setState(() {
           _error = response.message ?? 'Error al cargar cuentas';
@@ -59,6 +81,56 @@ class _AccountsScreenImprovedState extends State<AccountsScreenImproved> {
     }
   }
 
+  void _applyFilters() {
+    List<Account> filtered = List.from(_accounts);
+
+    // Aplicar filtro de búsqueda
+    if (_searchQuery.isNotEmpty) {
+      filtered = filtered
+          .where(
+            (account) =>
+                account.name.toLowerCase().contains(
+                  _searchQuery.toLowerCase(),
+                ) ||
+                account.typeDisplay.toLowerCase().contains(
+                  _searchQuery.toLowerCase(),
+                ),
+          )
+          .toList();
+    }
+
+    // Aplicar filtro de tipo
+    if (_selectedFilter != 'all') {
+      filtered = filtered
+          .where((account) => account.type == _selectedFilter)
+          .toList();
+    }
+
+    // Aplicar ordenamiento
+    filtered.sort((a, b) {
+      int comparison = 0;
+      switch (_sortBy) {
+        case 'name':
+          comparison = a.name.compareTo(b.name);
+          break;
+        case 'balance':
+          comparison = a.balance.compareTo(b.balance);
+          break;
+        case 'type':
+          comparison = a.type.compareTo(b.type);
+          break;
+        case 'created':
+          comparison = a.createdAt.compareTo(b.createdAt);
+          break;
+      }
+      return _sortAscending ? comparison : -comparison;
+    });
+
+    setState(() {
+      _filteredAccounts = filtered;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -71,6 +143,156 @@ class _AccountsScreenImprovedState extends State<AccountsScreenImproved> {
             tooltip: 'Actualizar',
           ),
         ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(120),
+          child: Column(
+            children: [
+              // Barra de búsqueda
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                child: TextField(
+                  onChanged: (value) {
+                    setState(() {
+                      _searchQuery = value;
+                    });
+                    _applyFilters();
+                  },
+                  decoration: InputDecoration(
+                    hintText: 'Buscar cuentas...',
+                    prefixIcon: const Icon(Icons.search),
+                    suffixIcon: _searchQuery.isNotEmpty
+                        ? IconButton(
+                            onPressed: () {
+                              setState(() {
+                                _searchQuery = '';
+                              });
+                              _applyFilters();
+                            },
+                            icon: const Icon(Icons.clear),
+                          )
+                        : null,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    filled: true,
+                    fillColor: Theme.of(context).cardColor,
+                  ),
+                ),
+              ),
+              // Filtros y ordenamiento
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                child: Row(
+                  children: [
+                    // Filtro por tipo
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        value: _selectedFilter,
+                        decoration: InputDecoration(
+                          labelText: 'Tipo',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                        ),
+                        items: const [
+                          DropdownMenuItem(value: 'all', child: Text('Todos')),
+                          DropdownMenuItem(
+                            value: 'cash',
+                            child: Text('Efectivo'),
+                          ),
+                          DropdownMenuItem(value: 'bank', child: Text('Banco')),
+                          DropdownMenuItem(
+                            value: 'credit',
+                            child: Text('Crédito'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'savings',
+                            child: Text('Ahorros'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'investment',
+                            child: Text('Inversión'),
+                          ),
+                        ],
+                        onChanged: (value) {
+                          setState(() {
+                            _selectedFilter = value!;
+                          });
+                          _applyFilters();
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    // Ordenamiento
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        value: _sortBy,
+                        decoration: InputDecoration(
+                          labelText: 'Ordenar',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                        ),
+                        items: const [
+                          DropdownMenuItem(
+                            value: 'name',
+                            child: Text('Nombre'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'balance',
+                            child: Text('Balance'),
+                          ),
+                          DropdownMenuItem(value: 'type', child: Text('Tipo')),
+                          DropdownMenuItem(
+                            value: 'created',
+                            child: Text('Fecha'),
+                          ),
+                        ],
+                        onChanged: (value) {
+                          setState(() {
+                            _sortBy = value!;
+                          });
+                          _applyFilters();
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    // Botón de orden
+                    IconButton(
+                      onPressed: () {
+                        setState(() {
+                          _sortAscending = !_sortAscending;
+                        });
+                        _applyFilters();
+                      },
+                      icon: Icon(
+                        _sortAscending
+                            ? Icons.arrow_upward
+                            : Icons.arrow_downward,
+                      ),
+                      tooltip: _sortAscending ? 'Ascendente' : 'Descendente',
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -153,391 +375,36 @@ class _AccountsScreenImprovedState extends State<AccountsScreenImproved> {
           // Resumen compacto
           SliverToBoxAdapter(child: _buildCompactSummary()),
 
+          // Contador de resultados
+          if (_searchQuery.isNotEmpty || _selectedFilter != 'all')
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                child: Text(
+                  '${_filteredAccounts.length} cuenta${_filteredAccounts.length != 1 ? 's' : ''} encontrada${_filteredAccounts.length != 1 ? 's' : ''}',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[600],
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ),
+
           // Lista de cuentas
           SliverList(
             delegate: SliverChildBuilderDelegate((context, index) {
-              final account = _accounts[index];
-              return _buildAccountCard(account);
-            }, childCount: _accounts.length),
+              final account = _filteredAccounts[index];
+              return _buildCompactAccountCard(account);
+            }, childCount: _filteredAccounts.length),
           ),
 
           // Espacio para el FAB
           const SliverToBoxAdapter(child: SizedBox(height: 80)),
         ],
-      ),
-    );
-  }
-
-  Widget _buildAccountCard(Account account) {
-    final isCredit = account.type == 'credit';
-    final availableCredit = isCredit ? (account.availableCredit ?? 0) : 0.0;
-    final creditUsage =
-        isCredit && account.creditLimit != null && account.creditLimit! > 0
-        ? (account.balance < 0 ? account.balance.abs() : 0) /
-              account.creditLimit!
-        : 0.0;
-    final typeColor = _getTypeColor(account.type);
-
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: Theme.of(context).dividerColor.withValues(alpha: 0.1),
-          width: 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Theme.of(context).shadowColor.withValues(alpha: 0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onTap: () => _navigateToEditAccount(account),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              children: [
-                // Header con icono, nombre y acciones
-                Row(
-                  children: [
-                    Container(
-                      width: 52,
-                      height: 52,
-                      decoration: BoxDecoration(
-                        color: typeColor.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                          color: typeColor.withValues(alpha: 0.2),
-                          width: 1,
-                        ),
-                      ),
-                      child: Icon(
-                        _getTypeIcon(account.type),
-                        color: typeColor,
-                        size: 26,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  account.name,
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w700,
-                                    color:
-                                        Theme.of(
-                                          context,
-                                        ).textTheme.bodyLarge?.color ??
-                                        Colors.black87,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              if (account.isDefault)
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 4,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.blue[600],
-                                    borderRadius: BorderRadius.circular(12),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.blue.withValues(
-                                          alpha: 0.3,
-                                        ),
-                                        blurRadius: 4,
-                                        offset: const Offset(0, 2),
-                                      ),
-                                    ],
-                                  ),
-                                  child: const Text(
-                                    'Principal',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                          const SizedBox(height: 6),
-                          Row(
-                            children: [
-                              Icon(
-                                _getTypeIcon(account.type),
-                                size: 16,
-                                color: typeColor,
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                account.typeDisplay,
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: typeColor,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                    Row(
-                      children: [
-                        _buildActionButton(
-                          icon: isCredit ? Icons.payment : Icons.swap_horiz,
-                          color: isCredit ? Colors.green : Colors.blue,
-                          onTap: () => _navigateToTransfer(account),
-                          tooltip: isCredit ? 'Pagar tarjeta' : 'Transferir',
-                        ),
-                        const SizedBox(width: 8),
-                        PopupMenuButton<String>(
-                          onSelected: (value) {
-                            switch (value) {
-                              case 'edit':
-                                _navigateToEditAccount(account);
-                                break;
-                              case 'delete':
-                                _showDeleteConfirmation(account);
-                                break;
-                            }
-                          },
-                          itemBuilder: (context) => [
-                            const PopupMenuItem(
-                              value: 'edit',
-                              child: Row(
-                                children: [
-                                  Icon(Icons.edit, size: 18),
-                                  SizedBox(width: 8),
-                                  Text('Editar'),
-                                ],
-                              ),
-                            ),
-                            const PopupMenuItem(
-                              value: 'delete',
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    Icons.delete,
-                                    size: 18,
-                                    color: Colors.red,
-                                  ),
-                                  SizedBox(width: 8),
-                                  Text(
-                                    'Eliminar',
-                                    style: TextStyle(color: Colors.red),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 20),
-
-                // Balance principal
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).scaffoldBackgroundColor,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: Theme.of(
-                        context,
-                      ).dividerColor.withValues(alpha: 0.1),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Balance Actual',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color:
-                                    Theme.of(
-                                      context,
-                                    ).textTheme.bodyMedium?.color ??
-                                    Colors.grey[600],
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              NumberFormat.currency(
-                                symbol: '\$',
-                              ).format(account.balance),
-                              style: TextStyle(
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                                color: account.balance >= 0
-                                    ? Colors.green[700]
-                                    : Colors.red[700],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      if (isCredit) ...[
-                        Container(
-                          width: 1,
-                          height: 40,
-                          color: Theme.of(
-                            context,
-                          ).dividerColor.withValues(alpha: 0.2),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Disponible',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color:
-                                      Theme.of(
-                                        context,
-                                      ).textTheme.bodyMedium?.color ??
-                                      Colors.grey[600],
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                NumberFormat.currency(
-                                  symbol: '\$',
-                                ).format(availableCredit),
-                                style: TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                  color: availableCredit > 0
-                                      ? Colors.blue[700]
-                                      : Colors.red[700],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-
-                // Barra de progreso para crédito
-                if (isCredit) ...[
-                  const SizedBox(height: 16),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'Uso de Crédito',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color:
-                                  Theme.of(
-                                    context,
-                                  ).textTheme.bodyMedium?.color ??
-                                  Colors.grey[600],
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          Text(
-                            '${(creditUsage * 100).toStringAsFixed(1)}%',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: creditUsage > 0.8
-                                  ? Colors.red[600]
-                                  : creditUsage > 0.6
-                                  ? Colors.orange[600]
-                                  : Colors.green[600],
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Container(
-                        height: 6,
-                        decoration: BoxDecoration(
-                          color: Theme.of(
-                            context,
-                          ).dividerColor.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(3),
-                        ),
-                        child: FractionallySizedBox(
-                          alignment: Alignment.centerLeft,
-                          widthFactor: creditUsage.clamp(0.0, 1.0),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: creditUsage > 0.8
-                                  ? Colors.red[400]
-                                  : creditUsage > 0.6
-                                  ? Colors.orange[400]
-                                  : Colors.green[400],
-                              borderRadius: BorderRadius.circular(3),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildActionButton({
-    required IconData icon,
-    required Color color,
-    required VoidCallback onTap,
-    required String tooltip,
-  }) {
-    return Tooltip(
-      message: tooltip,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
-        child: Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: color.withValues(alpha: 0.2), width: 1),
-          ),
-          child: Icon(icon, color: color, size: 20),
-        ),
       ),
     );
   }
@@ -591,6 +458,15 @@ class _AccountsScreenImprovedState extends State<AccountsScreenImproved> {
           accounts: _accounts,
           onTransferComplete: () => _loadAccounts(),
         ),
+      ),
+    );
+  }
+
+  void _navigateToAccountDetails(Account account) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AccountDetailsScreen(account: account),
       ),
     );
   }
@@ -667,11 +543,11 @@ class _AccountsScreenImprovedState extends State<AccountsScreenImproved> {
       (sum, account) => sum + (account.creditLimit ?? 0),
     );
 
-    // For credit cards, balance represents debt (negative values)
+    // For credit cards, balance represents debt (positive values)
     // We want to show how much credit is being used
     final totalCreditUsed = creditAccounts.fold<double>(
       0,
-      (sum, account) => sum + (account.balance < 0 ? account.balance.abs() : 0),
+      (sum, account) => sum + (account.balance > 0 ? account.balance : 0),
     );
 
     final creditUtilization = totalCreditLimit > 0
@@ -721,7 +597,7 @@ class _AccountsScreenImprovedState extends State<AccountsScreenImproved> {
             ],
           ),
 
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
 
           // Estadísticas en una fila
           Row(
@@ -767,6 +643,218 @@ class _AccountsScreenImprovedState extends State<AccountsScreenImproved> {
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildCompactAccountCard(Account account) {
+    final isCredit = account.type == 'credit';
+    final availableCredit = isCredit ? (account.availableCredit ?? 0) : 0.0;
+    final typeColor = _getTypeColor(account.type);
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Theme.of(context).dividerColor.withValues(alpha: 0.1),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Theme.of(context).shadowColor.withValues(alpha: 0.05),
+            blurRadius: 4,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () => _navigateToAccountDetails(account),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                // Icono de tipo
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: typeColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: typeColor.withValues(alpha: 0.2),
+                      width: 1,
+                    ),
+                  ),
+                  child: Icon(
+                    _getTypeIcon(account.type),
+                    color: typeColor,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+
+                // Información de la cuenta
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              account.name,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (account.isDefault)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.blue[600],
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Text(
+                                'Principal',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        account.typeDisplay,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: typeColor,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Balance y acciones
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      NumberFormat.currency(
+                        symbol: '\$',
+                      ).format(account.balance),
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: account.balance >= 0
+                            ? Colors.green[700]
+                            : Colors.red[700],
+                      ),
+                    ),
+                    if (isCredit && availableCredit > 0)
+                      Text(
+                        'Disponible: ${NumberFormat.currency(symbol: '\$').format(availableCredit)}',
+                        style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                      ),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _buildCompactActionButton(
+                          icon: isCredit ? Icons.payment : Icons.swap_horiz,
+                          color: isCredit ? Colors.green : Colors.blue,
+                          onTap: () => _navigateToTransfer(account),
+                          tooltip: isCredit ? 'Pagar' : 'Transferir',
+                        ),
+                        const SizedBox(width: 8),
+                        PopupMenuButton<String>(
+                          onSelected: (value) {
+                            switch (value) {
+                              case 'edit':
+                                _navigateToEditAccount(account);
+                                break;
+                              case 'delete':
+                                _showDeleteConfirmation(account);
+                                break;
+                            }
+                          },
+                          itemBuilder: (context) => [
+                            const PopupMenuItem(
+                              value: 'edit',
+                              child: Row(
+                                children: [
+                                  Icon(Icons.edit, size: 16),
+                                  SizedBox(width: 8),
+                                  Text('Editar'),
+                                ],
+                              ),
+                            ),
+                            const PopupMenuItem(
+                              value: 'delete',
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.delete,
+                                    size: 16,
+                                    color: Colors.red,
+                                  ),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    'Eliminar',
+                                    style: TextStyle(color: Colors.red),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCompactActionButton({
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+    required String tooltip,
+  }) {
+    return Tooltip(
+      message: tooltip,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: color.withValues(alpha: 0.2), width: 1),
+          ),
+          child: Icon(icon, color: color, size: 16),
+        ),
       ),
     );
   }
